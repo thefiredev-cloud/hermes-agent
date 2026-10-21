@@ -4,6 +4,11 @@ name: JS Tests
 on:
   workflow_call:
 
+# This reusable workflow uses no token scope beyond reading the repository.
+# Declaring it here caps what any caller can hand down.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: JS & TS checks
