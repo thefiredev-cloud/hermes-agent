@@ -612,8 +612,10 @@ export function ChatSidebar({
     // filter drop it, leaving the user looking at a chat that has no row.
     if (selectedSessionId) {
       const hasActive = filtered.some(s => s.id === selectedSessionId)
+
       if (!hasActive) {
         const activeRow = pool.find(s => s.id === selectedSessionId)
+
         if (activeRow) {
           return [...filtered, activeRow]
         }
@@ -641,7 +643,9 @@ export function ChatSidebar({
       if (
         showAllProfiles &&
         profileFilter.length &&
-        !profileFilter.some(name => normalizeProfileKey(name).toLowerCase() === normalizeProfileKey(session.profile).toLowerCase())
+        !profileFilter.some(
+          name => normalizeProfileKey(name).toLowerCase() === normalizeProfileKey(session.profile).toLowerCase()
+        )
       ) {
         return false
       }
@@ -685,6 +689,7 @@ export function ChatSidebar({
     // this chat, so hiding its row while its tile is open is always wrong.
     if (selectedSessionId && !base.some(s => s.id === selectedSessionId)) {
       const activeRow = scopedSessions.find(s => s.id === selectedSessionId)
+
       if (activeRow) {
         return [...base, activeRow]
       }

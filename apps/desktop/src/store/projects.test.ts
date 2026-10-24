@@ -1186,6 +1186,7 @@ describe('followActiveSessionCwd pin lock', () => {
 
       return { active_id: null, projects: [] }
     })
+
     const gateway = { connectionState: 'open', request }
 
     activeGateway.mockReturnValue(gateway as never)
