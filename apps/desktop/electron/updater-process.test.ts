@@ -300,12 +300,15 @@ test('collectRelaunchArgs drops Electron internals, keeps user/launcher args', (
     '--inspect=9229',
     '--remote-debugging-port=9222',
     '--no-sandbox',
+    '--use-angle=swiftshader',
     'hermes://open/session/abc',
     '--profile=work'
   ]
 
   assert.deepEqual(collectRelaunchArgs(argv), ['--no-sandbox', 'hermes://open/session/abc', '--profile=work'])
   assert.deepEqual(collectRelaunchArgs(undefined), [])
+  // Only the exact fallback artifact is dropped; a deliberate ANGLE backend survives.
+  assert.deepEqual(collectRelaunchArgs(['--use-angle=gl']), ['--use-angle=gl'])
 })
 
 test('sandboxFallbackFromEnv: ELECTRON_DISABLE_SANDBOX / --no-sandbox opt out', () => {
