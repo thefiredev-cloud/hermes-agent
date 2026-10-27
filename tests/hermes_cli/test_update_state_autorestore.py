@@ -26,7 +26,8 @@ import pytest
 
 from hermes_cli.update_cmd import (
     _clear_stale_sqlite_sidecars,
-    _restore_state_db_from_snapshot,
+    _restore_state_db,
+    StateRestoreOutcome,
 )
 
 OLD_ROWS = 201
@@ -191,7 +192,7 @@ def test_restore_helper_serves_snapshot_rows_over_a_hot_wal(
     has to hold the SNAPSHOT's rows even though the destination still owned a
     hot WAL from the corrupt database.
     """
-    assert _restore_state_db_from_snapshot(live_db_with_hot_wal, snapshot_db) is True
+    assert _restore_state_db(live_db_with_hot_wal, snapshot_db) is StateRestoreOutcome.RESTORED
 
     assert _row_count(live_db_with_hot_wal) == SNAPSHOT_ROWS
     for suffix in ("-wal", "-shm", "-journal"):
@@ -199,14 +200,14 @@ def test_restore_helper_serves_snapshot_rows_over_a_hot_wal(
 
 
 def test_restore_helper_reports_failure_when_the_restored_copy_is_corrupt(tmp_path):
-    """A snapshot that does not survive the copy must return False, so the
-    caller prints the failure branch instead of claiming success."""
+    """A snapshot that does not survive the copy must report VERIFY_FAILED, so the
+    caller never claims success for an image that did not verify."""
     state_path = tmp_path / "state.db"
     state_path.write_bytes(b"whatever")
     bad_snapshot = tmp_path / "bad-snapshot.db"
     bad_snapshot.write_bytes(b"\x00" * 4096)
 
-    assert _restore_state_db_from_snapshot(state_path, bad_snapshot) is False
+    assert _restore_state_db(state_path, bad_snapshot) is StateRestoreOutcome.VERIFY_FAILED
 
 
 def test_restore_helper_propagates_copy_errors(tmp_path):
@@ -216,7 +217,7 @@ def test_restore_helper_propagates_copy_errors(tmp_path):
     state_path.write_bytes(b"whatever")
 
     with pytest.raises(OSError):
-        _restore_state_db_from_snapshot(state_path, tmp_path / "does-not-exist.db")
+        _restore_state_db(state_path, tmp_path / "does-not-exist.db")
 
 
 # ── Multi-profile coverage (#97994) ─────────────────────────────────────
