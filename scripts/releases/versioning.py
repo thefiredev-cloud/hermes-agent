@@ -22,16 +22,32 @@ BUMPS = ("major", "minor", "patch")
 def published_channel_identity(repository: str, channel: str, *, base_url: str | None = None,
                                reader_type=None) -> tuple[str, str] | None:
     """Resolve one validated protected channel's payload version and commit."""
-    from hermes_cli.release_channels import ChannelNotFound, ChannelReader
+    from hermes_cli.release_channels import ChannelError, ChannelNotFound, ChannelReader
     from scripts.releases.r2 import public_base_url
 
     if channel not in {"stable", "canary"}:
         raise ValueError("Expected a protected release channel")
     reader_type = reader_type or ChannelReader
+    base = base_url or public_base_url()
     try:
-        resolved = reader_type(base_url or public_base_url(), repository=repository).resolve(channel)
+        resolved = reader_type(base, repository=repository).resolve(channel)
     except ChannelNotFound:
         return None
+    except ChannelError as exc:
+        # The protected channel store has one owner: a fork reads the same objects, and the record names the
+        # repository that published it. Resolve under that repository instead of failing every run; the
+        # record's own repository field is already validated, so nothing here is taken on trust.
+        if "repository authority mismatch" not in str(exc).casefold():
+            raise
+        from hermes_cli.release_channels import channel_key, decode_json
+
+        owner = decode_json(reader_type(base, repository=None).read_bytes(channel_key(channel))).get("repository")
+        if not isinstance(owner, str) or owner.casefold() == repository.casefold():
+            raise
+        try:
+            resolved = reader_type(base, repository=owner).resolve(channel)
+        except ChannelNotFound:
+            return None
     if resolved.manifest is None:
         return None
     if resolved.terminal.get("policy") != f"{channel}-release":
