@@ -166,8 +166,29 @@ concurrency:
   cancel-in-progress: ${{ inputs.release != true }}
 
 jobs:
+  # The 12-hourly schedule is an upstream drift monitor: it fans out to ~100 legs
+  # on hosted Linux, Windows and macOS runners, against upstream release tags and
+  # the published desktop installers. A fork has no use for that matrix and pays
+  # for it in hosted minutes, so scheduled runs on a fork stop here with a notice.
+  # Manual dispatch and the path-filtered pull_request run still execute on forks.
+  fork-schedule-notice:
+    name: Scheduled matrix skipped on forks
+    if: github.event_name == 'schedule' && github.repository != 'NousResearch/hermes-agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Explain the skip
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          msg="The scheduled Install & Update E2E matrix is an upstream drift monitor. $REPO is a fork, so the schedule is skipped. Run it by hand with workflow_dispatch when you want the full matrix; pull_request runs still cover the install/update surface."
+          echo "::notice title=Scheduled Install & Update E2E skipped::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+
   pick-releases:
     name: Pick release tags
+    if: github.event_name != 'schedule' || github.repository == 'NousResearch/hermes-agent'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -269,7 +290,7 @@ jobs:
   bundle-inputs:
     name: Validate pinned bundle transitions
     # Bundled legs need dispatch-only manifests; a PR never runs them.
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'schedule' || github.repository == 'NousResearch/hermes-agent')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -383,6 +404,7 @@ jobs:
   # looks it up by that name.
   leg-player:
     name: Upload leg player
+    if: github.event_name != 'schedule' || github.repository == 'NousResearch/hermes-agent'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -450,7 +472,7 @@ jobs:
   # the per-OS aggregates.
   report:
     name: Result chart
-    if: always()
+    if: always() && (github.event_name != 'schedule' || github.repository == 'NousResearch/hermes-agent')
     needs: [leg-player, pick-releases, linux, windows, macos, bundle-inputs, windows-bundled, macos-bundled]
     runs-on: ubuntu-latest
     timeout-minutes: 10
