@@ -33,8 +33,8 @@ import {
   $selectedStoredSessionId,
   $sessions,
   sessionMatchesStoredId,
-  setCurrentCwd,
   sessionPinId,
+  setCurrentCwd,
   setSessions,
   workspaceCwdForNewSession
 } from '@/store/session'

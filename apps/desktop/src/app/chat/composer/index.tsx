@@ -111,7 +111,6 @@ import {
   resolveExactLinkPaste,
   selectionLinkLabel
 } from './url-refs'
-
 import { VoiceActivity, VoicePlaybackActivity } from './voice-activity'
 
 export function ChatBar({
