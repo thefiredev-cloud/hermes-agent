@@ -133,7 +133,9 @@ jobs:
     needs: generate-patch
     # Skip entirely when generate-patch found no fixes — saves a runner,
     # avoids a redundant checkout/download, and keeps the job graph honest.
-    if: needs.generate-patch.outputs.has-fixes == 'true'
+    # A fork has Actions PR creation turned off, so this job could only fail on
+    # every push. Forks skip it; run `npm run fix` locally instead.
+    if: needs.generate-patch.outputs.has-fixes == 'true' && github.repository == 'NousResearch/hermes-agent'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: trusted-automation
