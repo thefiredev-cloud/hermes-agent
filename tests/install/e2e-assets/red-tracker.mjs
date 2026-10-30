@@ -14,6 +14,7 @@
  *
  * Needs GH_TOKEN (issues: write, actions: read) and GITHUB_REPOSITORY.
  */
+import { appendFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,6 +81,24 @@ function gh(args) {
   return execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
+/**
+ * What the tracker does when the repository has issues disabled (a fork). There
+ * is no issue to open, so a red run is surfaced in the job summary and an error
+ * annotation, and the job stays red so the red E2E is still visible in the
+ * Actions UI. A green run needs nothing. Pure, so it is testable.
+ *
+ * @param {{action: string, title?: string, body?: string}} plan planTracker() result computed with no open issue
+ * @returns {{exitCode: number, summary: string, annotation: string}}
+ */
+export function planWithoutIssues(plan) {
+  if (plan.action !== 'open') return { exitCode: 0, summary: '', annotation: '' };
+  return {
+    exitCode: 1,
+    summary: `## ${plan.title}\n\n_Issues are disabled on this repository, so no tracking issue was opened. The run is reported here instead._\n\n${plan.body}\n`,
+    annotation: `${plan.title}. Issues are disabled on this repository; see the job summary for the red legs.`,
+  };
+}
+
 async function main() {
   const { values } = parseArgs({ options: { 'run-id': { type: 'string' }, 'dry-run': { type: 'boolean', default: false } } });
   const repo = process.env.GITHUB_REPOSITORY;
@@ -89,10 +108,22 @@ async function main() {
   const jobs = gh(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/jobs?per_page=100`,
     '--jq', '.jobs[] | {name, conclusion, html_url, steps: [.steps[]? | {name, conclusion}]}'])
     .split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
-  const open = JSON.parse(gh(['api', `repos/${repo}/issues?labels=${LABEL}&state=open&per_page=5`]))
-    .filter((/** @type {any} */ i) => !i.pull_request);
+  const hasIssues = gh(['api', `repos/${repo}`, '--jq', '.has_issues']).trim() === 'true';
+  const open = hasIssues
+    ? JSON.parse(gh(['api', `repos/${repo}/issues?labels=${LABEL}&state=open&per_page=5`]))
+      .filter((/** @type {any} */ i) => !i.pull_request)
+    : [];
   const openIssue = open.length ? { number: open[0].number } : null;
   const plan = planTracker(run, jobs, openIssue);
+  if (!hasIssues) {
+    console.log(`run ${runId}: conclusion=${run.conclusion} red-legs=${jobs.filter((j) => RED.has(String(j.conclusion))).length} issues-enabled=false -> ${plan.action === 'open' ? 'report in job summary' : 'none'}`);
+    const outcome = planWithoutIssues(plan);
+    if (plan.body) console.log(`\n--- ${plan.title} ---\n${plan.body}`);
+    if (outcome.summary && !values['dry-run'] && process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, outcome.summary);
+    if (outcome.annotation && !values['dry-run']) console.log(`::error title=Install & Update E2E is red::${outcome.annotation}`);
+    if (!values['dry-run']) process.exitCode = outcome.exitCode;
+    return;
+  }
   console.log(`run ${runId}: conclusion=${run.conclusion} red-legs=${jobs.filter((j) => RED.has(String(j.conclusion))).length} open-tracker=${openIssue ? `#${openIssue.number}` : 'none'} -> ${plan.action}`);
   if (values['dry-run'] || plan.action === 'none') {
     if (plan.body) console.log(`\n--- ${plan.title || 'comment'} ---\n${plan.body}`);
