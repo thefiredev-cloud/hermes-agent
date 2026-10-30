@@ -195,11 +195,31 @@ env:
   RELEASE_CLAIM_OBJECT: ${{ inputs.claim-object }}
 
 jobs:
+  fork-skip-notice:
+    name: Skipped on forks (upstream-only publisher)
+    if: github.repository != 'NousResearch/hermes-agent'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Explain the skip
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          msg="Desktop Bundled Release publishes to the upstream R2 release bucket (CLOUDFLARE_R2_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_ACCESS_KEY, CLOUDFLARE_R2_BUCKET) under the release-signing environment. $REPO is not NousResearch/hermes-agent and holds none of them, so the build is skipped. To publish from a fork, provision those secrets, then change the github.repository guards in this workflow."
+          echo "::notice title=Desktop Bundled Release skipped::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+
   validate:
     name: Pre-build setup
     # One dispatch: in disposable mode the allocation steps run first (the
     # channel pin comes from them), then admission validates the build source.
     # A failed allocation fails this job and skips everything downstream.
+    # Upstream-only publisher: every job here ends in the upstream R2 release
+    # bucket and signing environment (CLOUDFLARE_R2_*, release-signing), which a
+    # fork does not hold. On a fork this job and everything downstream skip, and
+    # `fork-skip-notice` explains why instead of failing in archive_inputs.
+    if: github.repository == 'NousResearch/hermes-agent'
     runs-on: ubuntu-24.04
     # Public root is an environment variable, not a repository variable. No
     # secret is injected into admission; downstream jobs consume its outputs.
@@ -2428,7 +2448,7 @@ jobs:
 
   stable-phase-result:
     name: Stable bundle phase completed
-    if: always() && inputs.release-phase != ''
+    if: always() && inputs.release-phase != '' && github.repository == 'NousResearch/hermes-agent'
     needs:
       [
         validate,
