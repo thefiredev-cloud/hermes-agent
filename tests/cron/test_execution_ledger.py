@@ -471,8 +471,56 @@ def test_early_return_still_closes_connection(monkeypatch, tmp_path):
     assert len(closed) == 1
 
 
+def test_worker_adoption_outlasts_a_slow_writer(monkeypatch, tmp_path):
+    """A second connection holding the ledger's write lock for longer than sqlite_util's 5 s
+    default (a commit stalled on fsync) must delay the external worker's adoption, not fail it:
+    ``database is locked`` here exits the worker before its acknowledgement and loses the run."""
+    import threading
+    import time
+
+    executions = _point_ledger(monkeypatch, tmp_path)
+    record = executions.create_execution("slow-writer", source="builtin")
+    assert executions.mark_execution_handoff_pending(record["id"]) is not None
+
+    hold_seconds = 6.0
+    locked = threading.Event()
+
+    def hold_write_lock():
+        writer = sqlite3.connect(executions.EXECUTIONS_FILE, isolation_level=None)
+        try:
+            writer.execute("BEGIN IMMEDIATE")
+            locked.set()
+            time.sleep(hold_seconds)
+            writer.execute("COMMIT")
+        finally:
+            writer.close()
+
+    holder = threading.Thread(target=hold_write_lock)
+    holder.start()
+    try:
+        assert locked.wait(5)
+        started = time.monotonic()
+        adopted = executions.adopt_claimed_execution(record["id"])
+        waited = time.monotonic() - started
+    finally:
+        holder.join()
+
+    assert adopted is not None and adopted["status"] == "running"
+    assert waited >= hold_seconds - 1.0
 
 
+def test_incident_writes_share_the_ledger_busy_timeout(monkeypatch, tmp_path):
+    """``cron_incidents`` lives in the same file, so its connections wait as long as the ledger's."""
+    from cron import incidents
+
+    executions = _point_ledger(monkeypatch, tmp_path)
+    want = int(executions.HANDOFF_ADOPTION_GRACE_SECONDS * 1000)
+    for connect in (executions._connect, incidents._connect):
+        conn = connect()
+        try:
+            assert conn.execute("PRAGMA busy_timeout").fetchone()[0] == want
+        finally:
+            conn.close()
 
 
 def test_job_listing_exposes_latest_execution(monkeypatch, tmp_path):

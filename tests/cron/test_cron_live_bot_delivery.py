@@ -22,14 +22,18 @@ class _FakeAuthority:
 
     def __call__(self, home, params):
         record = self.records.get(params["id"])
+        # Like the real authority: the producer's category is persisted with the admission, and a
+        # replay that changes the message or the category is refused.
+        category = {"notification_category": params["notification_category"]} if "notification_category" in params else {}
         if record is None:
             record = self.records[params["id"]] = dict(
                 status="queued", delivery_id=params["id"], profile_home=str(Path(home).resolve()),
                 session_id="local-bot", message=params["message"], admission_id="adm-" + params["id"][:8],
-                reply="", error="", reason="")
+                reply="", error="", reason="", **category)
             with mailbox._locked(home) as root:
                 mailbox._write(root / f"{params['id']}.json", record)
-        elif record["message"] != params["message"]:
+        elif (record["message"], record.get("notification_category")) != (
+                params["message"], params.get("notification_category")):
             raise ValueError("admission_conflict")
         return dict(record)
 
@@ -105,3 +109,32 @@ def test_result_records_pending_until_terminal_receipt(tmp_path, monkeypatch):
     authority.publish(key, status="settled", reply="done")
     assert delivery._deliver_result(job, "payload") is None
     assert updates[-1]["last_delivery_queued"] is None
+
+
+def test_failure_notice_then_result_of_one_run_are_two_deliveries(tmp_path, monkeypatch):
+    """One run, two payloads: an attempt reported unverified sends its failure notice, then the
+    reconciled run delivers its result under the same execution id. Each payload is its own
+    delivery; keyed on the run alone the result met the notice's receipt and the run ended
+    ``delivery_failed: delivery id already belongs to a different payload``."""
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setattr(mailbox, "find_canonical_live_owner", lambda home: _owner(tmp_path))
+    monkeypatch.setattr("gateway.warning_notifications.warning_notifications_enabled", lambda *a, **k: True)
+    authority = _FakeAuthority()
+    monkeypatch.setattr(mailbox, "authority_delivery", authority)
+    job = dict(id="feedback-review", name="Feedback review", execution_id="one-run")
+    notice, report = "Cron execution unverified; reconcile the admission", "2 new feedback items"
+
+    assert "queued" in delivery._deliver_to_bot_chat(dict(job), notice, "", for_failure=True)
+    (notice_key,) = authority.records
+    authority.publish(notice_key, status="settled", reply="noted")
+
+    outcome = delivery._deliver_to_bot_chat(dict(job), report, "")
+    assert outcome and "queued" in outcome and "different payload" not in outcome, outcome
+    (result_key,) = set(authority.records) - {notice_key}
+    assert authority.records[result_key]["message"].endswith(report)
+    assert "notification_category" not in authority.records[result_key]
+
+    # Retrying either payload of the run replays its own receipt: no new admission.
+    assert delivery._deliver_to_bot_chat(dict(job), notice, "", for_failure=True) is None
+    assert delivery._deliver_to_bot_chat(dict(job), report, "") == outcome
+    assert len(authority.records) == 2
