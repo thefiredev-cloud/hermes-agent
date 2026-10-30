@@ -744,8 +744,15 @@ def _deliver_to_bot_chat(job: dict, content: str, profile: str, *,
         run_id = job.get("execution_id")
         if not run_id:
             run_id = job.setdefault("_bot_chat_run_id", uuid.uuid4().hex)
+        # The id names one payload of one run for one target: a retry of the same payload
+        # replays its receipt, while a different payload from the same run (the failure
+        # notice of an unverified attempt, then the result its reconcile recovered) is its own
+        # delivery. Keyed on the run alone, the second payload found the first one's receipt
+        # and failed the run's delivery with "already belongs to a different payload".
+        category = "diagnostic" if for_failure else "result"
         key = hashlib.sha256(json.dumps(
-            [str(source_home), job_id, str(run_id), str(home)],
+            [str(source_home), job_id, str(run_id), str(home), category,
+             hashlib.sha256(message.encode("utf-8")).hexdigest()],
             ensure_ascii=False, separators=(",", ":"),
         ).encode("utf-8")).hexdigest()
         # Read BEFORE discovery: the previous owner may have exited after accepting.
@@ -772,8 +779,7 @@ def _deliver_to_bot_chat(job: dict, content: str, profile: str, *,
             # A failure notice rides as ``diagnostic`` so the target's reply stays muted.
             receipt = deliver_to_live_owner(home, owner, message, delivery_id=key,
                 **({"notification_category": "diagnostic"} if for_failure else {}))
-        if (receipt["message"] != message
-                or receipt.get("notification_category", "result") != ("diagnostic" if for_failure else "result")):
+        if receipt["message"] != message or receipt.get("notification_category", "result") != category:
             raise ValueError("delivery id already belongs to a different payload")
         status = receipt["status"]
         receipts = job.setdefault("_bot_chat_delivery_receipts", {})
