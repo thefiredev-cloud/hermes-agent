@@ -254,6 +254,7 @@ const sidebars: SidebarsConfig = {
                     'user-guide/skills/bundled/productivity/productivity-box',
                     'user-guide/skills/bundled/productivity/productivity-document-to-action-items',
                     'user-guide/skills/bundled/productivity/productivity-docx',
+                    'user-guide/skills/bundled/productivity/productivity-food-delivery',
                     'user-guide/skills/bundled/productivity/productivity-google-workspace',
                     'user-guide/skills/bundled/productivity/productivity-maps',
                     'user-guide/skills/bundled/productivity/productivity-meeting-action-items',
@@ -364,6 +365,7 @@ const sidebars: SidebarsConfig = {
                   key: 'skills-optional-creative',
                   collapsed: true,
                   items: [
+                    'user-guide/skills/optional/creative/creative-ableton',
                     'user-guide/skills/optional/creative/creative-ai-presenter-video',
                     'user-guide/skills/optional/creative/creative-archify',
                     'user-guide/skills/optional/creative/creative-ascii-art',
@@ -386,6 +388,7 @@ const sidebars: SidebarsConfig = {
                     'user-guide/skills/optional/creative/creative-kanban-video-orchestrator',
                     'user-guide/skills/optional/creative/creative-meme-generation',
                     'user-guide/skills/optional/creative/creative-mono-color',
+                    'user-guide/skills/optional/creative/creative-pencil',
                     'user-guide/skills/optional/creative/creative-pixel-art',
                     'user-guide/skills/optional/creative/creative-pretext',
                     'user-guide/skills/optional/creative/creative-simple-english',
