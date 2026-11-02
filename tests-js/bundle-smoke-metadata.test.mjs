@@ -45,6 +45,8 @@ test('identity uses the production bundled variant and exact input tokens, not i
   expect(JSON.parse(execFileSync(process.execPath, [cli, 'identity', '--commit', commit], { env: hostileEnvironment, encoding: 'utf8' }))).toEqual(tagless)
 })
 
+// About 13 synchronous node child processes: this took 24 s on a standard GitHub-hosted runner (2026-10-31),
+// past the old 15 s budget, so the budget leaves room for that runner class.
 test('channel smoke binds the complete admitted request, not a commit-build identity or display version', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'channel-smoke-'))
   const token = randomBytes(8).toString('hex'), sequence = 65537
@@ -109,7 +111,7 @@ test('channel smoke binds the complete admitted request, not a commit-build iden
       expect(run('identity').status).not.toBe(0)
     }
   } finally { fs.rmSync(temp, { recursive: true, force: true }) }
-}, 15_000)
+}, 60_000)
 
 test('workspace admission rejects reuse and symlink escapes before creating anything outside runner temp', () => {
   const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'smoke-paths-')))
