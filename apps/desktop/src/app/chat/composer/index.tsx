@@ -104,14 +104,7 @@ import { ComposerTriggerPopover } from './trigger-popover'
 import type { ChatBarProps } from './types'
 import { isRedoShortcut, isUndoShortcut } from './undo-history'
 import { UrlDialog } from './url-dialog'
-import {
-  chipTypedUrlOnSpace,
-  linkifyUrls,
-  markdownLinkFor,
-  resolveExactLinkPaste,
-  selectionLinkLabel
-} from './url-refs'
-
+import { chipTypedUrlOnSpace, markdownLinkFor, resolveExactLinkPaste, selectionLinkLabel } from './url-refs'
 import { VoiceActivity, VoicePlaybackActivity } from './voice-activity'
 
 export function ChatBar({
@@ -657,7 +650,7 @@ export function ChatBar({
         }
 
         recordUndoPoint()
-        insertComposerContentsAtCaret(editor, pathifyRefs(linkifyUrls(pastedText)), openDirectiveScope(editor))
+        insertComposerContentsAtCaret(editor, preparePastedText(pastedText), openDirectiveScope(editor))
         scheduleFlushEditorToDraft(editor)
       })
 
