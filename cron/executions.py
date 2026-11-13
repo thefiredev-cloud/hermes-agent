@@ -32,6 +32,14 @@ logger = logging.getLogger(__name__)
 EXECUTIONS_FILE: Optional[Path] = None
 MAX_TERMINAL_EXECUTIONS = 1000
 HANDOFF_ADOPTION_GRACE_SECONDS = 30.0
+# How long a ledger statement waits for another connection's write lock. Every transaction here
+# touches a few rows, so waiting is cheap; ``database is locked`` is not: raised from the external
+# worker's ``adopt_claimed_execution`` it exits the worker before its acknowledgement and the run
+# is lost. The 5 s ``open_db`` default was outlasted by single slow commits (synchronous=FULL
+# fsyncs on a saturated disk) with no contention behind them. Adoption may wait as long as the
+# gateway waits for the acknowledgement; past that the gateway keeps the claim and waits on the
+# worker process, so a late adoption is still owned.
+LEDGER_BUSY_TIMEOUT_MS = int(HANDOFF_ADOPTION_GRACE_SECONDS * 1000)
 # Floor for the live-owner stale-claim bound (#115692); see _live_owner_stale_after_seconds.
 LIVE_OWNER_STALE_CLAIM_FLOOR_SECONDS = 7200.0
 _TERMINAL_STATES = ("completed", "failed", "unknown")
@@ -50,7 +58,8 @@ def _connect() -> sqlite3.Connection:
 
     path = EXECUTIONS_FILE or (get_hermes_home().resolve() / "cron" / "executions.db")
     _ensure_cron_dir(path.parent)
-    return open_db(path, db_label="cron/executions.db", synchronous_full=True, initialize=_initialize_schema)
+    return open_db(path, db_label="cron/executions.db", busy_timeout_ms=LEDGER_BUSY_TIMEOUT_MS,
+                   synchronous_full=True, initialize=_initialize_schema)
 
 
 def _initialize_schema(conn: sqlite3.Connection) -> None:
