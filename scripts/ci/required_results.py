@@ -9,7 +9,12 @@ release mode unless the job is in :data:`EXCLUDED_JOBS` (PR-only jobs that
 cannot run on a tag event, plus the deferred Desktop E2E). The OSV scan is
 advisory in its findings only — its execution is required.
 
-    echo "$NEEDS" | python3 scripts/ci/required_results.py [--release]
+``--advisory JOB...`` (ordinary runs only) lists jobs whose non-success result
+is reported as a warning instead of failing the gate. A fork without the
+upstream larger runners uses it for the runner-bound suites. ``--release``
+ignores the list: a release run stays strict.
+
+    echo "$NEEDS" | python3 scripts/ci/required_results.py [--release] [--advisory JOB ...]
 """
 
 from __future__ import annotations
@@ -32,14 +37,19 @@ NEEDS_JSON_OUTPUT = "needs-json"
 def evaluate_gate(
     needs: dict[str, dict[str, Any]] | None,
     release: bool = False,
+    advisory: tuple[str, ...] | list[str] = (),
 ) -> dict[str, Any]:
     """Verdict for a ``needs`` context; see the module docstring.
 
     Returns ``ok``, plus sorted ``failed`` (every non-success, non-allowed
-    entry) and ``allowed_skips``.
+    entry) and ``allowed_skips``. When ``advisory`` names jobs on a non-release
+    run, a non-success advisory job is listed under ``advisory_failed`` and
+    does not fail the gate; the key is absent when ``advisory`` is empty.
     """
     failed: list[str] = []
     allowed_skips: list[str] = []
+    advisory_failed: list[str] = []
+    advisory_names = frozenset() if release else frozenset(advisory)
     entries = needs or {}
     if not entries:
         failed.append("<no-needs>")
@@ -50,12 +60,18 @@ def evaluate_gate(
         if result == "skipped" and (not release or name in EXCLUDED_JOBS):
             allowed_skips.append(name)
             continue
+        if name in advisory_names:
+            advisory_failed.append(name)
+            continue
         failed.append(name)
-    return {
+    verdict: dict[str, Any] = {
         "ok": not failed,
         "failed": sorted(failed),
         "allowed_skips": sorted(allowed_skips),
     }
+    if advisory_names:
+        verdict["advisory_failed"] = sorted(advisory_failed)
+    return verdict
 
 
 def compact_results(needs: dict[str, dict[str, Any]] | None) -> dict[str, str]:
@@ -66,10 +82,17 @@ def compact_results(needs: dict[str, dict[str, Any]] | None) -> dict[str, str]:
 def render_report(needs: dict[str, dict[str, Any]] | None, verdict: dict[str, Any]) -> list[str]:
     """Per-job lines plus ::error:: annotations for the failed set."""
     lines: list[str] = []
+    advisory_failed = set(verdict.get("advisory_failed", ()))
     for name in sorted(needs or {}):
         result = (needs[name] or {}).get("result", "unknown")
-        icon = {"success": "✅", "skipped": "⏭️"}.get(result, "❌")
+        if name in advisory_failed:
+            icon = "⚠️"
+        else:
+            icon = {"success": "✅", "skipped": "⏭️"}.get(result, "❌")
         lines.append(f"{icon} {name}: {result}")
+    if advisory_failed:
+        names = ", ".join(sorted(advisory_failed))
+        lines.append(f"::warning::{len(advisory_failed)} advisory job(s) not green: {names}")
     if verdict["failed"]:
         failed = verdict["failed"]
         lines.append(f"::error::{len(failed)} job(s) failed: {', '.join(failed)}")
@@ -83,10 +106,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Strict mode: a skipped excluded job is the only tolerated skip.",
     )
+    parser.add_argument(
+        "--advisory",
+        nargs="+",
+        default=[],
+        metavar="JOB",
+        help="Jobs whose non-success result warns instead of failing (ignored with --release).",
+    )
     args = parser.parse_args(argv)
 
     needs = json.load(sys.stdin)
-    verdict = evaluate_gate(needs, release=args.release)
+    verdict = evaluate_gate(needs, release=args.release, advisory=args.advisory)
     compact = compact_results(needs)
 
     output_file = os.environ.get("GITHUB_OUTPUT")
@@ -98,7 +128,10 @@ def main(argv: list[str] | None = None) -> int:
     for line in render_report(needs, verdict):
         print(line)
     if verdict["ok"]:
-        print("All checks passed" if args.release else "All checks passed (or were skipped)")
+        if verdict.get("advisory_failed"):
+            print("All required checks passed; advisory jobs above are not green")
+        else:
+            print("All checks passed" if args.release else "All checks passed (or were skipped)")
     return 0 if verdict["ok"] else 1
 
 

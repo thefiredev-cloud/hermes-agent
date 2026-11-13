@@ -353,9 +353,16 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
           RELEASE: ${{ inputs.release }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           args=()
           if [ "$RELEASE" = true ]; then args+=(--release); fi
+          # Only the upstream repo has the larger runners the heavy suites were sized for.
+          # A fork runs them on 4-vCPU hosted runners (Python tests hit the 30 min cap at
+          # ~40%, Desktop E2E starves, hosted Windows image differs): report, do not block.
+          if [ "$REPOSITORY" != "NousResearch/hermes-agent" ]; then
+            args+=(--advisory tests tests-os e2e-desktop-core e2e-desktop-update)
+          fi
           printf '%s' "$NEEDS" | python3 scripts/ci/required_results.py "${args[@]}"
 
   # ─────────────────────────────────────────────────────────────────────
