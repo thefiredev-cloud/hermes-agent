@@ -3,6 +3,7 @@
 import contextlib
 import json
 import re
+import sqlite3
 import sys
 from datetime import timezone
 from pathlib import Path
@@ -678,21 +679,59 @@ def _cron_doctor_issues_for_job(job: Dict[str, Any]) -> List[str]:
     return issues
 
 
+def _open_incidents_by_job() -> Dict[str, List[Dict[str, Any]]]:
+    """Open (``detected``/``alerted``) cron failure incidents grouped by job id. ``resolved`` and
+    ``closed`` incidents are not open."""
+    from cron.incidents import list_incidents
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for state in ("detected", "alerted"):
+        for inc in list_incidents(state=state):
+            grouped.setdefault(str(inc.get("job_id") or ""), []).append(inc)
+    return grouped
+
+
+def _incident_issue(inc: Dict[str, Any]) -> str:
+    error = re.sub(r"\s+", " ", inc.get("error") or "").strip()
+    error = error if len(error) <= 120 else error[:117] + "..."
+    return f"open incident {inc.get('id', '?')} ({inc.get('state', '?')}): {error or 'no error recorded'}"
+
+
 def cron_doctor() -> int:
-    """Run read-only cron health checks and return a shell-friendly status."""
+    """Run read-only cron health checks and return a shell-friendly status.
+
+    Beyond the active jobs' own state, an open failure incident is reported for a paused or
+    disabled job (nothing else surfaces it) and for a job id that no longer exists (it can never
+    recover on its own, so it must be acked)."""
     from cron.jobs import list_jobs
-    jobs = list_jobs(include_disabled=False)
-    findings = [(job, issues) for job in jobs if (issues := _cron_doctor_issues_for_job(job))]
+    all_jobs = list_jobs(include_disabled=True)
+    jobs = [job for job in all_jobs if job.get("enabled", True)]
+    findings = [(job.get("id", "?"), job.get("name", "(unnamed)"), issues)
+                for job in jobs if (issues := _cron_doctor_issues_for_job(job))]
+    try:
+        open_incidents = _open_incidents_by_job()
+    except (OSError, sqlite3.Error) as exc:
+        open_incidents = {}
+        print(color(f"⚠ Incident store could not be read ({exc}); incident checks skipped.", Colors.YELLOW))
+    known_ids = {str(job.get("id")) for job in all_jobs}
+    for job in all_jobs:
+        if not job.get("enabled", True) and (incidents := open_incidents.get(str(job.get("id")))):
+            findings.append((job.get("id", "?"), f"{job.get('name', '(unnamed)')} [paused]",
+                             [_incident_issue(inc) for inc in incidents]))
+    for job_id, incidents in sorted(open_incidents.items()):
+        if job_id not in known_ids:
+            findings.append((job_id or "?", "[job no longer exists]",
+                             [_incident_issue(inc) + " (ack with `hermes cron incidents ack <id>`)"
+                              for inc in incidents]))
     if not findings:
         print(color("✓ Cron doctor found no issues", Colors.GREEN))
         note = f"  Checked {len(jobs)} active job(s)." if jobs else "  No active jobs configured."
         print(color(note, Colors.DIM))
         return 0
-    issue_count = sum(len(issues) for _, issues in findings)
+    issue_count = sum(len(issues) for _, _, issues in findings)
     print(color(f"Cron doctor found {issue_count} issue(s) across {len(findings)} job(s):", Colors.YELLOW))
     print()
-    for job, issues in findings:
-        print(f"  {color(job.get('id', '?'), Colors.YELLOW)} {job.get('name', '(unnamed)')}")
+    for job_id, name, issues in findings:
+        print(f"  {color(job_id, Colors.YELLOW)} {name}")
         for issue in issues:
             print(f"    - {issue}")
     print()
