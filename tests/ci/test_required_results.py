@@ -73,3 +73,50 @@ def test_cli_stdin_exit_codes_and_output(tmp_path, release, results, code, repor
     assert f"{key}={value}" in child.stdout
     for name, result in results.items():
         assert f"{name}: {result}" in child.stdout
+
+
+ADVISORY = ("tests", "tests-os", "e2e-desktop-core", "e2e-desktop-update")
+
+
+@pytest.mark.parametrize("result", ["failure", "cancelled"])
+def test_advisory_job_warns_without_failing_an_ordinary_run(result):
+    needs = {"lint": {"result": "success"}, "tests": {"result": result}}
+    assert evaluate_gate(needs, advisory=ADVISORY) == {
+        "ok": True, "failed": [], "allowed_skips": [], "advisory_failed": ["tests"],
+    }
+
+
+def test_advisory_never_covers_a_job_outside_the_list():
+    needs = {"lint": {"result": "failure"}, "tests": {"result": "failure"}}
+    assert evaluate_gate(needs, advisory=ADVISORY) == {
+        "ok": False, "failed": ["lint"], "allowed_skips": [], "advisory_failed": ["tests"],
+    }
+
+
+def test_advisory_is_ignored_on_a_release_run():
+    needs = {"tests": {"result": "failure"}}
+    assert evaluate_gate(needs, release=True, advisory=ADVISORY) == {
+        "ok": False, "failed": ["tests"], "allowed_skips": [],
+    }
+
+
+def test_cli_advisory_reports_a_warning_and_exits_zero():
+    needs = {"lint": {"result": "success"}, "e2e-desktop-core": {"result": "failure"}}
+    child = subprocess.run(
+        [sys.executable, str(SCRIPT), "--advisory", *ADVISORY],
+        input=json.dumps(needs), capture_output=True, text=True, timeout=30,
+    )
+    assert child.returncode == 0, child.stderr
+    assert "⚠️ e2e-desktop-core: failure" in child.stdout
+    assert "::warning::1 advisory job(s) not green: e2e-desktop-core" in child.stdout
+    assert "::error::" not in child.stdout
+
+
+def test_cli_release_with_advisory_still_fails_closed():
+    needs = {"tests": {"result": "failure"}}
+    child = subprocess.run(
+        [sys.executable, str(SCRIPT), "--release", "--advisory", *ADVISORY],
+        input=json.dumps(needs), capture_output=True, text=True, timeout=30,
+    )
+    assert child.returncode == 1
+    assert "::error::1 job(s) failed: tests" in child.stdout
