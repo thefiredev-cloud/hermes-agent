@@ -38,7 +38,7 @@ dependencies = [
   # user picks that backend. Smaller `dependencies` = smaller blast
   # radius for the next supply-chain attack.
   "openai==2.24.0; python_version >= '3.14'",
-  "certifi==2026.5.20; python_version >= '3.14'",
+  "certifi==2026.10.18; python_version >= '3.14'",  # GHSA-6q48-6c7w-9gw2: compromised emSign intermediates removed
   # TLS trust comes from the OS certificate store (agent/ssl_verify.py), so
   # a corporate/internal root installed on the machine just works. certifi
   # above stays a direct pin because httpx/requests/openai each depend on
@@ -170,7 +170,7 @@ dependencies = [
   # libs required for the codecs we use, so it's safe to ship in the base
   # install rather than gating it behind an extra + a mid-session lazy install
   # (which deadlocked the CLI under prompt_toolkit — see #40490).
-  "Pillow==12.3.0; python_version >= '3.14'",
+  "Pillow==13.0.0; python_version >= '3.14'",  # GHSA-5x8w-8jj5-q52h (FPX RCE) + TIFF/JPEG/OpenJPEG heap overflows
   # HEIF/HEIC/AVIF decode for the vision tools. iPhone photos and screenshots
   # are HEIC (frequently mislabeled .jpg by upload pipelines); Pillow has no
   # built-in HEIF codec, so without this the vision resolver rejects them as
@@ -264,7 +264,7 @@ messaging = [
   "python-telegram-bot[webhooks]==22.8",
   "discord.py[voice]==2.7.1",
   "aiohttp==3.14.3",
-  "brotlicffi==1.2.0.2",
+  "brotlicffi==1.2.1.0",  # GHSA-9v8h-qqgm-4m35
   "slack-bolt==1.30.0",
   "slack-sdk==3.44.1",
   "qrcode==7.4.2",
@@ -372,7 +372,7 @@ supermemory = ["supermemory==3.50.0"]
 # win32-arm64 gate as google-chat. mem0 is lazy-installed, so on arm64 the
 # provider is simply unavailable.
 mem0 = [
-  "mem0ai==2.0.10; platform_machine != 'ARM64' or sys_platform != 'win32'",
+  "mem0ai==2.0.18; platform_machine != 'ARM64' or sys_platform != 'win32'",  # GHSA-5324-3w58-qpp2
 ]
 # Image resize recovery for the vision tools. Pillow is now a CORE dependency
 # (see the main `dependencies` list above) since the byte/pixel shrink paths are on
@@ -401,7 +401,7 @@ pty = []
 # unaffected — the two distributions install side by side under different
 # module names.
 mcp = [
-  "mcp==2.0.0",
+  "mcp==2.2.0",  # GHSA-w4fh-qvv9-3v23 / GHSA-5h93-6whr-6q8j / GHSA-rwrf-2pqf-9j8j
   "httpx2==2.7.0",
   "starlette==1.3.1",
 ] # starlette: CVE-2026-48710
@@ -417,7 +417,7 @@ teams = [
 # Computer use talks to PM's pinned cua-driver over MCP stdio. This extra
 # provides the MCP client, independently of the native driver package.
 computer-use = [
-  "mcp==2.0.0",
+  "mcp==2.2.0",  # GHSA-w4fh-qvv9-3v23 / GHSA-5h93-6whr-6q8j / GHSA-rwrf-2pqf-9j8j
   "httpx2==2.7.0",
   "starlette==1.3.1",
 ] # starlette: CVE-2026-48710
@@ -436,6 +436,9 @@ mistral = ["mistralai==2.4.8"]
 # PM on first use; never a core dependency and deliberately
 # NOT in [all].
 otlp = [
+  # opentelemetry-api 1.45.1 fixes GHSA-xcq7-p3pf-p88h, but sdk 1.45.1 forces
+  # opentelemetry-semantic-conventions==0.66b1 while mistralai 2.4.8 caps
+  # <0.61. Held at 1.39.1 until mistralai lifts the cap (medium, dev-only extra).
   "opentelemetry-sdk==1.39.1",
   "opentelemetry-exporter-otlp-proto-http==1.39.1",
 ]
@@ -480,9 +483,12 @@ google = [
   # The Google SDKs permit older vulnerable transitives, so unlocked installs
   # must carry the same fixed floors as uv.lock and the runtime installers:
   # httplib2 0.32.0 (GHSA-j5g9-f88f-gfj3 decompression bomb DoS),
-  # pyasn1 0.6.4, google-auth 2.55.1.
+  # pyasn1 0.6.5 (GHSA-fm9c-5rcf-2q5p), google-auth 2.55.1.
   "httplib2==0.32.0",
-  "pyasn1==0.6.4",
+  "pyasn1==0.6.5",
+  # oauthlib 4.0.1: GHSA-3jp2-3mrg-2vxc (device-flow token) + GHSA-7984-qgvg-3j9c (client_id confusion).
+  # google-auth-oauthlib 1.3.1 -> requests-oauthlib accepts any >=3, so 4.0.1 resolves clean.
+  "oauthlib==4.0.1",
 ]
 youtube = [
   # Required by skills/media/youtube-content and
@@ -543,7 +549,7 @@ dev = [
   "debugpy==1.8.20",
   "pytest==9.1.1",
   "pytest-asyncio==1.3.0",
-  "mcp==2.0.0",
+  "mcp==2.2.0",  # GHSA-w4fh-qvv9-3v23 / GHSA-5h93-6whr-6q8j / GHSA-rwrf-2pqf-9j8j
   "httpx2==2.7.0",
   "starlette==1.3.1",
   "ty==0.0.82",
@@ -637,6 +643,14 @@ override-dependencies = [
   # never builds a misaki G2P. The never-true marker removes it from the lock.
   # Remove this line when misaki drops it or a 3.14-capable release fits.
   "spacy-curated-transformers; sys_platform == 'never'",
+  # browser-harness 0.1.13 (latest, 2026-09-04) pins pillow==12.3.0 exactly,
+  # which carries GHSA-5x8w-8jj5-q52h (FlashPix heap overflow -> code exec) and
+  # the TIFF/JPEG/OpenJPEG heap highs. browser-harness uses Pillow only for
+  # CDP screenshot resize/re-encode (Image.open/resize/convert/save), unchanged
+  # in 13. Keep this exact version equal to the direct dependency (uv overrides
+  # replace the requirement, not only the vendor's upper bound). Remove this
+  # line when browser-harness publishes a Pillow 13-compatible release.
+  "pillow==13.0.0",
 ]
 exclude-newer = "14 days"
 # h2: temporary exclude-newer exception for the CVE-2026-71554 (GHSA-6hr6-w5qg-qmwg,
@@ -747,6 +761,7 @@ modal = false
 nemo-relay = false
 neutts = "2026-07-22T14:54:23Z"
 numpy = false
+oauthlib = false
 openai = false
 opentelemetry-exporter-otlp-proto-http = false
 opentelemetry-sdk = false
