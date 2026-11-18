@@ -43,6 +43,30 @@ describe('interface mode persistence', () => {
     vi.resetModules()
     expect((await loadStore()).$interfaceMode.get()).toBe('advanced')
   })
+
+  it('seeds Kodros Simple once on a first launch and never undoes a later Advanced pick', async () => {
+    const first = await loadStore()
+
+    first.seedKodrosInterfaceDefault()
+    expect(first.$interfaceMode.get()).toBe('simple')
+
+    first.setInterfaceMode('advanced')
+    vi.resetModules()
+    const relaunched = await loadStore()
+    relaunched.seedKodrosInterfaceDefault()
+    expect(relaunched.$interfaceMode.get()).toBe('advanced')
+  })
+
+  it('leaves an install that already picked a mode alone when the seed first runs', async () => {
+    window.localStorage.setItem(MODE_KEY, 'simple')
+    const store = await loadStore()
+
+    store.setInterfaceMode('advanced')
+    window.localStorage.setItem(MODE_KEY, 'simple')
+    store.seedKodrosInterfaceDefault()
+    expect(window.localStorage.getItem('kodros.desktop.interfaceDefaultSeeded.v1')).toBe('1')
+    expect(window.localStorage.getItem(MODE_KEY)).toBe('simple')
+  })
 })
 
 describe('modeBound resolver', () => {

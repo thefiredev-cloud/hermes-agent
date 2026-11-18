@@ -42,6 +42,14 @@ def test_builtins_available_without_any_config():
         assert render_personality_prompt(defn)
 
 
+def test_kodros_builtin_resolves_from_display_personality():
+    cfg = {"display": {"personality": "kodros"}}
+    assert active_personality_name(cfg) == "kodros"
+    prompt = resolve_ephemeral_system_prompt(cfg)
+    assert prompt.startswith("You are Jev, Tanner's local AI inside Kodros")
+    assert "\u2014" not in prompt
+
+
 def test_user_entries_overlay_builtins_by_name():
     cfg = {"agent": {"personalities": {"kawaii": "toned down", "custom": "hi"}}}
     merged = available_personalities(cfg)

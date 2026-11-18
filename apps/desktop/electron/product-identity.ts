@@ -23,9 +23,8 @@ export const PRODUCT_IDENTITY: Readonly<ProductIdentity> =
     ? Object.freeze(nodeCreateRequire(import.meta.url)('../product-identity.cjs') as ProductIdentity)
     : Object.freeze(__HERMES_PRODUCT_IDENTITY__)
 
-/** Pin before the first userData lookup and single-instance lock. Electron's
- * later display-name changes must not redirect an installed build's state.
- * Stable keeps its historical userData and runtime naming behavior.
+/** Pin the historical per-variant userData path before changing the display
+ * name. Product branding must never redirect installed profiles or credentials.
  */
 export function applyDesktopIdentity(
   app: {
@@ -35,10 +34,6 @@ export function applyDesktopIdentity(
   },
   identity: Readonly<ProductIdentity> = PRODUCT_IDENTITY
 ): string | null {
-  if (!identity.token && identity.appNamePascal === identity.artifactNamePascal) {
-    return null
-  }
-
   const userData: string = path.join(app.getPath('appData'), identity.appNamePascal)
   mkdirSync(userData, { recursive: true })
   app.setPath('userData', userData)

@@ -171,7 +171,10 @@ export const Thread = memo(function Thread({
   const emptyBody = intro ? <Intro {...intro} /> : sessionId ? <ChatEmptySlot sessionId={sessionId} /> : null
 
   const emptyPlaceholder = emptyBody ? (
-    <div className="flex min-h-0 w-full flex-col items-center justify-center pt-[var(--composer-measured-height)]">
+    <div
+      className="flex min-h-0 w-full flex-col items-center justify-center pt-[var(--composer-measured-height)]"
+      data-slot="aui_empty"
+    >
       {emptyBody}
     </div>
   ) : undefined

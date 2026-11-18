@@ -5,7 +5,7 @@
 // how the two halves drift.
 //
 // A .cjs module (not JSON) so the variant is decided at require time:
-// HERMES_DESKTOP_VARIANT=light builds "Hermes Light". The whole config
+// HERMES_DESKTOP_VARIANT=light builds "Kodros Light". The whole config
 // derives from that one flag.
 // @ts-check
 'use strict'
@@ -74,7 +74,7 @@ module.exports = {
   electronVersion,
   appId,
   productName: displayName,
-  executableName: displayName,
+  executableName: appNamePascal,
   protocols: [
     {
       name: `${displayName} Protocol`,
@@ -83,8 +83,11 @@ module.exports = {
   ],
   // A store build is archived, never served to a feed — prefix its artifact
   // so it can't collide with the out-of-store MSIX of the same tag/arch, and
-  // the release pipeline can keep the two apart.
-  artifactName: `${store ? 'Store-' : ''}${artifactNamePascal}-\${version}-\${os}-\${arch}.\${ext}`,
+  // the release pipeline can keep the two apart. Installer files carry the
+  // public brand (Kodros-1.2.3-linux-x86_64.AppImage), the same for stable,
+  // canary and commit builds; the pascal ids stay system identifiers for
+  // userData, the single-instance lock and the MSIX package.
+  artifactName: `${store ? 'Store-' : ''}${light ? 'Kodros-Light' : 'Kodros'}-\${version}-\${os}-\${arch}.\${ext}`,
   icon: 'assets/icon',
   // The electron-updater feed. CI builds set CLOUDFLARE_R2_PUBLIC_URL (the R2
   // public bucket / custom domain) and publish there — the feed yml, blockmaps
@@ -163,7 +166,8 @@ module.exports = {
     category: 'public.app-category.developer-tools',
     extendInfo: {
       CFBundleDisplayName: displayName,
-      CFBundleExecutable: displayName,
+      // The executable is a system identifier (executableName above), not branding.
+      CFBundleExecutable: appNamePascal,
       CFBundleName: displayName,
       LSRequiresNativeExecution: true,
       NSAudioCaptureUsageDescription: `${displayName} uses audio capture for voice conversations.`,
@@ -199,19 +203,9 @@ module.exports = {
   dmg: {
     // Avoid the failing optional APFS shrink pass; keep compressed conversion.
     shrink: false,
-    // The volume icon defaults to the packager's icns, which is actool's 256px
-    // fallback whenever `mac.icon` is the Icon Composer package. Ship our own
-    // drive-with-the-girl artwork instead (dmgbuild's badge option can only
-    // paste onto the stock removable-drive icon). It lives in packaging/ with
-    // the background so the `files` whitelist keeps it out of the app bundle.
-    icon: 'packaging/dmg-volume.icns',
-    title: 'Hermes Agent Installer',
-    // A prebuilt .tiff on purpose, not a PNG plus a @2x sibling: dmg-builder's
-    // PNG path runs `tiffutil -cathidpicheck`, which on macOS 26 rewrites both
-    // frames to 72 dpi and silently drops the 2x representation. A .tiff is
-    // handed to dmgbuild untouched (dmg-builder/dist/dmgUtil.js), and living
-    // outside assets/ keeps it out of the app bundle via the `files` whitelist.
-    background: 'packaging/nous-dmg-2b.tiff',
+    // The volume icon and window background stay the packager defaults (the
+    // app's own Kodros icon); the upstream Nous artwork in packaging/ is not used.
+    title: `${displayName} Installer`,
     iconSize: 96,
     iconTextSize: 11,
     window: {
@@ -250,7 +244,7 @@ module.exports = {
     applicationId: appNamePascal,
     displayName,
     publisher: store ? mustStoreMsix(storeMsixWhenStore).publisher : OUT_OF_STORE_PUBLISHER,
-    publisherDisplayName: store ? mustStoreMsix(storeMsixWhenStore).publisherDisplayName : 'Nous Research',
+    publisherDisplayName: store ? mustStoreMsix(storeMsixWhenStore).publisherDisplayName : displayName,
     // The native quad is the build time (scripts/msix-shared.mjs::nativeQuad),
     // baked into the manifest template, so the builder's own build-number
     // override would stamp a second, conflicting version.
@@ -280,10 +274,10 @@ module.exports = {
   },
   linux: {
     category: 'Development',
-    maintainer: 'Nous Research <support@nousresearch.com>',
+    maintainer: 'Kodros <tanner@meshvault.ai>',
     synopsis: light
-      ? 'Remote-only desktop client for Hermes Agent.'
-      : 'Native desktop shell for Hermes Agent.',
+      ? 'Remote-only desktop client for Kodros.'
+      : 'Private local AI desktop for Kodros.',
     target: ['AppImage']
   }
 }

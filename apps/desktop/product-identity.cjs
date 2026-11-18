@@ -1,6 +1,11 @@
 // The desktop product identity — THE single source for every name-shaped
-// value a variant owns. HERMES_DESKTOP_VARIANT=light builds "Hermes
-// Light", the remote-only client; everything else is full "Hermes".
+// value a variant owns. HERMES_DESKTOP_VARIANT=light builds "Kodros Light",
+// the remote-only client; every other desktop build carries Kodros branding.
+//
+// `display` is public branding only. `kebab` and `pascal` are system
+// identifiers (appId, executable name, userData directory, MSIX ids) and keep
+// their historical Hermes values so installed builds keep their sessions,
+// settings, credentials and hermes:// handler.
 //
 // Consumed at build time by electron-builder.config.cjs (packaging
 // identity). electron/product-identity.ts is the typed runtime accessor.
@@ -9,14 +14,14 @@
 'use strict'
 
 const variants = {
-  '': { display: 'Hermes', kebab: 'hermes', pascal: 'Hermes' },
+  '': { display: 'Kodros', kebab: 'hermes', pascal: 'Hermes' },
   light: {
-    display: 'Hermes Light',
+    display: 'Kodros Light',
     kebab: 'hermes-light',
     pascal: 'HermesLight'
   },
   bundled: {
-    display: 'Hermes Agent',
+    display: 'Kodros Agent',
     kebab: 'hermes-bundled',
     pascal: 'HermesBundled'
   }

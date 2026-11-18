@@ -41,6 +41,7 @@ import { installSelectionCopyColorGuard } from './lib/selection-copy-colors'
 import { isTransparentWindow } from './lib/transparent-windows'
 import { startUiPreferencesSync } from './lib/ui-preferences/sync'
 import { installBrowserTabTitle } from './store/browser-tab-title'
+import { seedKodrosInterfaceDefault } from './store/interface-mode'
 import { ThemeProvider } from './themes/context'
 
 installClipboardShim()
@@ -64,7 +65,7 @@ if (import.meta.env.MODE !== 'production' || import.meta.env.VITE_PERF_PROBE ===
 const winParam = new URLSearchParams(window.location.search).get('win')
 
 if (winParam === 'hud') {
-  document.title = 'Hermes HUD'
+  document.title = 'Kodros HUD'
 }
 
 // Each transparent root used to force its host layers see-through when it
@@ -92,6 +93,8 @@ if (winParam === 'overlay') {
   // main window's visibility state to :root so decorative infinite
   // animations stop producing frames when nobody can see them.
   installRendererAnimationPauseState()
+  // Kodros Desktop: a first launch rests in Simple (chat-first) once.
+  seedKodrosInterfaceDefault()
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

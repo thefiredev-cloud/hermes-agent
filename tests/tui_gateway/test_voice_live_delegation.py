@@ -83,9 +83,17 @@ class TestSessionCreation:
         monkeypatch.setattr(voice_live, "_resolve_credentials", lambda live: ("", voice_live.DEFAULT_LIVE_BASE_URL))
         monkeypatch.setattr(voice_live.urllib.request, "urlopen", lambda *a, **k: pytest.fail("must not call the vendor"))
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Kodros Live server not configured"):
             voice_live.create_webrtc_session("v=0 offer")
-        assert voice_live.resolve_gpt_live_status()["available"] is False
+        status = voice_live.resolve_gpt_live_status()
+        assert status["available"] is False
+        assert status["reason"] == voice_live.LIVE_UNAVAILABLE_REASON
+
+    def test_persona_is_the_kodros_assistant(self):
+        assert voice_live.LIVE_PERSONA.startswith("You are Jev, Tanner's local AI inside Kodros.")
+        assert "OpenAI" not in voice_live.LIVE_PERSONA and "Hermes" not in voice_live.LIVE_PERSONA
+        assert "Delegation policy:" in voice_live.LIVE_PERSONA
+        assert voice_live.live_instructions({"instructions": "Speak Spanish."}).startswith(voice_live.LIVE_PERSONA)
 
 
 class TestVoiceLiveTurnNote:

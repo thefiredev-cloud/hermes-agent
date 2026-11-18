@@ -1,23 +1,24 @@
-"""GPT-Live voice chat mode: the full-duplex voice frontend that delegates to Hermes.
+"""Kodros Live voice chat mode: the full-duplex voice frontend that delegates to the agent.
 
 ``voice.voice_chat_mode: gpt-live`` replaces the chained STT → turn → TTS loop with ONE
-full-duplex voice model (OpenAI ``gpt-live-1``) that owns the microphone and the speaker and
-delegates every real request to Hermes as its *client-delegation* backend. Hermes stays the
-agent: whatever model/provider the session has selected answers, with the full toolset.
+full-duplex voice server that owns the microphone and the speaker and delegates every real
+request to the agent as its *client-delegation* backend. The agent stays the brain: whatever
+model/provider the session has selected answers, with the full toolset.
 
-Division of labour (the Live API has no tools of its own in client mode):
+Division of labour (the live server has no tools of its own in client mode):
 
 * the desktop renderer holds the WebRTC media session (mic in, speech out) and the data channel;
-* this module resolves WHICH credentials/voice/persona to use and performs the one server-side
-  step the API requires — exchanging the browser's SDP offer for an answer with the project key
-  (``POST /v1/live/sessions``), so the key never reaches the client;
+* this module resolves WHICH endpoint/voice/persona to use and performs the one server-side
+  step the protocol requires — exchanging the browser's SDP offer for an answer with the
+  configured bearer token (``POST {voice.gpt_live.base_url}/live/sessions``), so the token never
+  reaches the client;
 * the renderer turns each ``session.delegation.created`` into a normal ``prompt.submit`` on the
   active session (surface ``voice-live``) and streams the reply back as
-  ``session.commentary.append`` — Hermes' answer is what the voice speaks.
+  ``session.commentary.append`` — the agent's answer is what the voice speaks.
 
-Vendor contract: https://developers.openai.com/api/docs/guides/live (+ live-delegation,
-voice-webrtc). Billing is $0.05/min of session time on the OpenAI key, separate from the
-Hermes turn.
+Any server that speaks this Live sessions protocol works. Kodros points
+``voice.gpt_live.base_url`` at a local server on this machine; the config keys and the
+``gpt-live`` mode name are kept so existing settings stay valid.
 """
 
 from __future__ import annotations
@@ -35,26 +36,27 @@ CHAINED_MODE = "chained"
 DEFAULT_LIVE_MODEL = "gpt-live-1"
 DEFAULT_LIVE_VOICE = "marin"
 DEFAULT_LIVE_BASE_URL = "https://api.openai.com/v1"
-# Voices the vendor lists for gpt-live-1 (live-conversations guide) plus the realtime defaults it
-# accepts; free text stays allowed for custom voices.
+# Voice ids offered in Settings (the hosted live model's list); free text stays allowed, so a local
+# server can take its own voice ids.
 GPT_LIVE_VOICES = (
     "marin", "cedar", "quartz", "ripple", "vesper", "willow", "stone", "gleam", "meridian",
     "bossa", "tempo", "beacon", "delta", "cinder",
 )
 
-# Persona for the voice layer. Short on purpose: the live model has a small context window and
-# the vendor guide asks for role + style + a labelled delegation policy, nothing more. The
-# backend (Hermes) carries the real instructions, tools and memory.
+# Persona for the voice layer. Short on purpose: a live voice model has a small context window and
+# works best with role + style + a labelled delegation policy, nothing more. The backend agent
+# carries the real instructions, tools and memory.
 LIVE_PERSONA = (
-    "You are Hermes, a calm and friendly voice assistant. Speak naturally at an unhurried pace. "
-    "Be clear and direct, not overly cheerful. If the user is frustrated, acknowledge it briefly "
-    "and focus on the next helpful step.\n\n"
+    "You are Jev, Tanner's local AI inside Kodros. You run on his own machines. Speak naturally "
+    "at an even pace, in short direct sentences. Lead with the answer. No filler, no hype, no "
+    "greetings padding. Do not address him by name. If he is frustrated, acknowledge "
+    "it in a few words and move to the next useful step.\n\n"
     "Backchannel policy: Use moderate backchannels. Acknowledge naturally without competing with "
     "the main response.\n\n"
     "Interruption policy: Stop speaking when the user interrupts. Listen to what they say.\n\n"
     "Delegation policy:\n"
     "Backend tools:\n"
-    "- Hermes agent: a full AI agent with tools — it can run commands, read and edit files, "
+    "- Kodros agent: a full AI agent with tools — it can run commands, read and edit files, "
     "browse the web, search, remember things across sessions, schedule tasks, and reason "
     "carefully about anything. It is the one who actually does work and knows facts.\n\n"
     "Delegate to the backend when:\n"
@@ -112,15 +114,22 @@ def voice_chat_mode(voice: Optional[dict[str, Any]] = None) -> str:
 
 
 def _resolve_credentials(live: dict[str, Any]) -> tuple[str, str]:
-    """``(api_key, base_url)`` — ``voice.gpt_live.api_key`` first, else the same OpenAI audio
-    chain the STT/TTS providers use (``VOICE_TOOLS_OPENAI_KEY`` → ``OPENAI_API_KEY`` → pool).
+    """``(api_key, base_url)`` — ``voice.gpt_live.api_key`` first, else the audio key chain the
+    STT/TTS providers use (``VOICE_TOOLS_OPENAI_KEY`` → ``OPENAI_API_KEY`` → pool).
 
-    The Nous-managed audio proxy does not carry ``/live/sessions``; this mode is direct-key only.
+    A local Kodros Live server still needs a non-empty token here (any placeholder it accepts);
+    an empty token reports the mode unavailable. The Nous-managed audio proxy does not carry
+    ``/live/sessions``.
     """
     from tools.tool_backend_helpers import resolve_openai_audio_api_key
     api_key = str(live.get("api_key") or "").strip() or resolve_openai_audio_api_key()
     base_url = str(live.get("base_url") or DEFAULT_LIVE_BASE_URL).strip().rstrip("/")
     return api_key, base_url
+
+
+LIVE_UNAVAILABLE_REASON = (
+    "Kodros Live server not configured (set voice.gpt_live.base_url and voice.gpt_live.api_key)"
+)
 
 
 def live_instructions(live: Optional[dict[str, Any]] = None) -> str:
@@ -129,8 +138,8 @@ def live_instructions(live: Optional[dict[str, Any]] = None) -> str:
 
 
 def resolve_gpt_live_status() -> dict[str, Any]:
-    """Non-secret readiness verdict for the client: which mode is selected and whether GPT-Live
-    can start (a key resolves). Never returns the key."""
+    """Non-secret readiness verdict for the client: which mode is selected and whether Kodros Live
+    can start (a token resolves). Never returns the token."""
     voice = _voice_section()
     mode = voice_chat_mode(voice)
     live = _live_section(voice)
@@ -138,15 +147,15 @@ def resolve_gpt_live_status() -> dict[str, Any]:
     return {
         "mode": mode,
         "available": bool(api_key),
-        "reason": None if api_key else "no OpenAI API key (set OPENAI_API_KEY or voice.gpt_live.api_key)",
+        "reason": None if api_key else LIVE_UNAVAILABLE_REASON,
         "model": str(live.get("model") or DEFAULT_LIVE_MODEL),
         "voice": str(live.get("voice") or DEFAULT_LIVE_VOICE),
     }
 
 
 def build_session_config(history: Optional[list] = None) -> dict[str, Any]:
-    """The ``session`` object for ``POST /v1/live/sessions`` (client delegation, WebRTC — the
-    transport negotiates the audio format, so none is set)."""
+    """The ``session`` object for ``POST {base_url}/live/sessions`` (client delegation, WebRTC —
+    the transport negotiates the audio format, so none is set)."""
     live = _live_section()
     config: dict[str, Any] = {
         "model": str(live.get("model") or DEFAULT_LIVE_MODEL),
@@ -162,14 +171,14 @@ def build_session_config(history: Optional[list] = None) -> dict[str, Any]:
 def create_webrtc_session(sdp_offer: str, history: Optional[list] = None) -> dict[str, Any]:
     """Exchange the renderer's SDP offer for the Live session answer.
 
-    Returns the vendor response ``{"session": {"id": ...}, "transport": {"type": "webrtc",
-    "sdp": ...}}``. Raises ``ValueError`` for a missing key and ``RuntimeError`` (with the vendor
-    status/detail) for a rejected request.
+    Returns the server response ``{"session": {"id": ...}, "transport": {"type": "webrtc",
+    "sdp": ...}}``. Raises ``ValueError`` for a missing token and ``RuntimeError`` (with the
+    server status/detail) for a rejected request.
     """
     live = _live_section()
     api_key, base_url = _resolve_credentials(live)
     if not api_key:
-        raise ValueError("GPT-Live needs an OpenAI API key (OPENAI_API_KEY or voice.gpt_live.api_key)")
+        raise ValueError(LIVE_UNAVAILABLE_REASON)
     body = json.dumps({
         "session": build_session_config(history),
         "transport": {"type": "webrtc", "sdp": sdp_offer},
@@ -182,5 +191,5 @@ def create_webrtc_session(sdp_offer: str, history: Optional[list] = None) -> dic
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")[:600]
-        logger.warning("GPT-Live session creation failed: %s %s", exc.code, detail)
-        raise RuntimeError(f"GPT-Live session creation failed ({exc.code}): {detail}") from exc
+        logger.warning("Kodros Live session creation failed: %s %s", exc.code, detail)
+        raise RuntimeError(f"Kodros Live session creation failed ({exc.code}): {detail}") from exc

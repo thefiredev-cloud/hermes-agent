@@ -5,6 +5,7 @@ import { I18nProvider, useI18n } from '@/i18n'
 import type { I18nContextValue } from '@/i18n'
 
 import { Intro } from './intro'
+import kodros from './intro-copy-kodros.jsonl?raw'
 import stock from './intro-copy.jsonl?raw'
 
 const CJK_LOCALES = new Set(['zh', 'zh-hant', 'ja'])
@@ -67,6 +68,29 @@ it('translates every shipped stock body at the same personality and rotation pos
   await act(() => i18n.setLocale('en'))
   rerender(<Fixture personality={entries[0].personality} seed={0} />)
   expect(container.querySelector('[data-slot="aui_intro"] > div > p:last-child')!.textContent).toBe(entries[0].body)
+})
+it('pins one plain Kodros line under the KODROS wordmark in English, for kodros and neutral personalities', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0)
+
+  const bodies = kodros
+    .trim()
+    .split('\n')
+    .map(line => (JSON.parse(line) as { personality: string; body: string }).body)
+
+  expect(bodies.length).toBeGreaterThanOrEqual(20)
+
+  for (const body of bodies) {
+    expect(body).not.toMatch(/[\u2013\u2014]|Tanner/)
+  }
+
+  const pinned = 'Ask anything, drop in a lease or a spreadsheet, or start with a goal.'
+  const { container, rerender } = render(<Fixture personality="kodros" seed={0} />)
+  expect(container.querySelector('[data-slot="aui_intro"] p.wordmark')!.getAttribute('aria-label')).toBe('KODROS')
+
+  for (const [personality, seed] of [['Kodros', 3], ['', 7], ['none', 11]] as const) {
+    rerender(<Fixture personality={personality} seed={seed} />)
+    expect(container.querySelector('[data-slot="aui_intro"] > div > p:last-child')!.textContent).toBe(pinned)
+  }
 })
 it('localizes the custom-personality fallback without translating its user-supplied name', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(0)

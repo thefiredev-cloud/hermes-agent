@@ -45,6 +45,88 @@ const SYSTEM_MONO =
 
 export const DEFAULT_TYPOGRAPHY: DesktopThemeTypography = { fontSans: SYSTEM_SANS, fontMono: SYSTEM_MONO }
 
+const KODROS_SANS =
+  '"Inter", "Inter Variable", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif, ' +
+  EMOJI_FALLBACK
+
+/**
+ * Kodros — the default skin of Kodros Desktop. Dark is true black: black
+ * chrome and sidebar, near-black raised surfaces, high-contrast ink, and one
+ * accent (Kodros blue). `#2E4FFF` is the brand fill (white text clears AA on
+ * it); text-weight accent on black uses `#7B93FF`, the same hue lifted to
+ * 7:1. Neutral greys carry no accent tint: the `[data-hermes-theme='kodros']`
+ * block in styles.css zeroes the accent mix knobs and pins the neutral seeds
+ * to black, so blue appears only where something is the accent.
+ *
+ * No `fontUrl`: a private local app does not fetch web fonts.
+ */
+export const kodrosTheme: DesktopTheme = {
+  name: 'kodros',
+  label: 'Kodros',
+  description: 'True black, high contrast, one blue accent',
+  colors: {
+    background: '#ffffff',
+    foreground: '#0a0a0a',
+    card: '#ffffff',
+    cardForeground: '#0a0a0a',
+    muted: '#f4f4f5',
+    mutedForeground: '#52525b',
+    popover: '#ffffff',
+    popoverForeground: '#0a0a0a',
+    primary: '#2e4fff',
+    primaryForeground: '#ffffff',
+    secondary: '#f4f4f5',
+    secondaryForeground: '#18181b',
+    accent: '#f4f4f5',
+    accentForeground: '#0a0a0a',
+    border: '#e4e4e7',
+    input: '#d4d4d8',
+    ring: '#2e4fff',
+    midground: '#2e4fff',
+    midgroundForeground: '#ffffff',
+    composerRing: '#2e4fff',
+    destructive: '#d92d20',
+    destructiveForeground: '#ffffff',
+    sidebarBackground: '#f7f7f8',
+    sidebarBorder: '#e4e4e7',
+    userBubble: '#f2f2f3',
+    userBubbleBorder: '#e4e4e7'
+  },
+  darkColors: {
+    background: '#000000',
+    foreground: '#f5f5f5',
+    card: '#111111',
+    cardForeground: '#f5f5f5',
+    muted: '#161616',
+    mutedForeground: '#a3a3a3',
+    popover: '#141414',
+    popoverForeground: '#f5f5f5',
+    primary: '#2e4fff',
+    primaryForeground: '#ffffff',
+    secondary: '#1a1a1a',
+    secondaryForeground: '#e5e5e5',
+    accent: '#1a1a1a',
+    accentForeground: '#f5f5f5',
+    border: '#262626',
+    input: '#2e2e2e',
+    ring: '#7b93ff',
+    midground: '#7b93ff',
+    midgroundForeground: '#000000',
+    composerRing: '#7b93ff',
+    destructive: '#ff5c5c',
+    destructiveForeground: '#000000',
+    sidebarBackground: '#000000',
+    sidebarBorder: '#1f1f1f',
+    userBubble: '#1c1c1c',
+    userBubbleBorder: '#2a2a2a'
+  },
+  typography: {
+    fontSans: KODROS_SANS,
+    fontMono: SYSTEM_MONO,
+    fontUrl: undefined
+  }
+}
+
 /**
  * Nous — the canonical Hermes desktop identity, forked from the GitHub VS Code
  * theme (github.github-vscode-theme). Light is GitHub Light Default, dark is
@@ -129,8 +211,8 @@ export const githubTheme: DesktopTheme = {
  */
 export const nousTheme: DesktopTheme = {
   name: 'nous',
-  label: 'Nous',
-  description: 'GitHub chrome, Nous blue accent',
+  label: 'Cobalt',
+  description: 'GitHub chrome, cobalt blue accent',
   ...THEME_PRESET_PALETTES.nous,
   typography: {
     fontSans: SYSTEM_SANS,
@@ -329,7 +411,7 @@ export const solarizedTheme: DesktopTheme = {
  */
 export const nousAltTheme: DesktopTheme = {
   name: 'nous-alt',
-  label: 'Nous Alt',
+  label: 'Cobalt Alt',
   description: 'Glass neutrals, cream on mission-blue',
   ...THEME_PRESET_PALETTES['nous-alt'],
   typography: {
@@ -378,7 +460,7 @@ const classicPalette = (colors: Record<string, string>) => skinToDesktopTheme({ 
  */
 export const classicTheme: DesktopTheme = {
   name: 'classic',
-  label: 'Classic Hermes',
+  label: 'Classic Gold',
   description: "Gold on navy, the CLI's original look",
   colors: classicPalette(CLASSIC_LIGHT_SKIN_COLORS),
   darkColors: classicPalette(CLASSIC_DARK_SKIN_COLORS)
@@ -442,6 +524,7 @@ export const slateTheme: DesktopTheme = {
 }
 
 export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
+  kodros: kodrosTheme,
   nous: nousTheme,
   github: githubTheme,
   catppuccin: catppuccinTheme,
@@ -459,7 +542,7 @@ export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
 export const BUILTIN_THEME_LIST = Object.values(BUILTIN_THEMES)
 
 /** Skin used when nothing is persisted or the persisted name is retired. */
-export const DEFAULT_SKIN_NAME = 'nous'
+export const DEFAULT_SKIN_NAME = 'kodros'
 
 /** Names that no longer resolve to a skin of their own. A stored pick of one
  *  falls back to DEFAULT_SKIN_NAME, and a cached backend theme under one is

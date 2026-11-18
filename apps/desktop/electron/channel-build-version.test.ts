@@ -188,17 +188,34 @@ test('a channel that copies the stable identity packages and runs as the regular
   assert.equal(branded.config.extraMetadata?.name, stable.config.extraMetadata?.name)
   assert.equal(branded.config.artifactName, stable.config.artifactName)
 
-  assert.equal(
-    applyDesktopIdentity(
-      {
-        getPath: (): string => assert.fail('stable userData must not be relocated'),
-        setPath: (): void => assert.fail('stable userData must not be relocated'),
-        setName: (): void => assert.fail('stable name must not change')
-      },
-      branded.identity
-    ),
-    null
-  )
+  // It runs as the regular app: the local branding patch pins every build to its historical
+  // userData directory (appNamePascal), so the channel must land in the very same one.
+  const runAs = (identity: ProductIdentity): { name?: string; userData?: string } => {
+    const appData: string = fs.mkdtempSync(path.join(os.tmpdir(), 'channel-identity-'))
+    const seen: { name?: string; userData?: string } = {}
+
+    try {
+      applyDesktopIdentity(
+        {
+          getPath: (): string => appData,
+          setPath: (_key: string, value: string): void => {
+            seen.userData = path.relative(appData, value)
+          },
+          setName: (value: string): void => {
+            seen.name = value
+          }
+        },
+        identity
+      )
+    } finally {
+      fs.rmSync(appData, { force: true, recursive: true })
+    }
+
+    return seen
+  }
+
+  assert.deepEqual(runAs(branded.identity), runAs(official))
+  assert.deepEqual(runAs(official), { name: official.displayName, userData: official.appNamePascal })
 })
 
 test('channel stamps verify the real checkout and retain source version and native ownership', async (): Promise<void> => {

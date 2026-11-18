@@ -71,23 +71,23 @@ describe('Classic Hermes is an explicit Desktop pick, never inferred from stock 
   it.each([
     ['display.skin: default', stockDefaultSkin],
     ['display.skin unset', null]
-  ])('a stock user (%s) with no Desktop pick paints Nous on boot, connect and relaunch', async (_label, local) => {
+  ])('a stock user (%s) with no Desktop pick paints Kodros on boot, connect and relaunch', async (_label, local) => {
     let run = await launch(local)
-    expect(run.bootPaint).toBe('nous')
+    expect(run.bootPaint).toBe('kodros')
     run.connect()
     run.connect() // reconnect re-seed
-    expect(run.api.theme?.themeName).toBe('nous')
-    expect(paintedSkin()).toBe('nous')
+    expect(run.api.theme?.themeName).toBe('kodros')
+    expect(paintedSkin()).toBe('kodros')
 
     run = await launch(local)
-    expect(run.bootPaint).toBe('nous')
+    expect(run.bootPaint).toBe('kodros')
     run.connect()
-    expect(paintedSkin()).toBe('nous')
+    expect(paintedSkin()).toBe('kodros')
   })
 
   it('a Classic pick paints gold/navy (dark mode) and survives connect, reconnect and relaunch; a later Nous pick sticks', async () => {
     let run = await launch(stockDefaultSkin)
-    expect(run.api.theme?.availableThemes.find(t => t.name === 'classic')?.label).toBe('Classic Hermes')
+    expect(run.api.theme?.availableThemes.find(t => t.name === 'classic')?.label).toBe('Classic Gold')
 
     act(() => run.api.theme?.setMode('dark'))
     act(() => run.api.theme?.setTheme('classic'))
@@ -112,7 +112,7 @@ describe('Classic Hermes is an explicit Desktop pick, never inferred from stock 
     expect(paintedSkin()).toBe('nous')
   })
 
-  it('/skin gold and /skin hermes select Classic; /skin default stays the Desktop default (Nous)', async () => {
+  it('/skin gold and /skin hermes select Classic; /skin default stays the Desktop default (Kodros)', async () => {
     const run = await launch(stockDefaultSkin)
 
     act(() => void run.api.skin?.('gold'))
@@ -123,7 +123,7 @@ describe('Classic Hermes is an explicit Desktop pick, never inferred from stock 
     expect(run.api.theme?.themeName).toBe('classic')
 
     act(() => void run.api.skin?.('default'))
-    expect(run.api.theme?.themeName).toBe('nous')
+    expect(run.api.theme?.themeName).toBe('kodros')
   })
 
   it('a cache left by the reverted #130015 build (CLI `default` as "Classic Hermes") shows ONE Classic and is purged', async () => {
@@ -143,9 +143,9 @@ describe('Classic Hermes is an explicit Desktop pick, never inferred from stock 
     run.connect()
 
     const themes = run.api.theme?.availableThemes ?? []
-    expect(themes.filter(t => t.label === 'Classic Hermes').map(t => t.name)).toEqual(['classic'])
+    expect(themes.filter(t => t.label === 'Classic Gold').map(t => t.name)).toEqual(['classic'])
     expect(themes.some(t => t.name === 'default')).toBe(false)
-    expect(run.api.skin?.('list').match(/Classic Hermes/g)).toHaveLength(1)
+    expect(run.api.skin?.('list').match(/Classic Gold/g)).toHaveLength(1)
     expect(JSON.parse(window.localStorage.getItem(BACKEND_THEMES_KEY) ?? '{}')).not.toHaveProperty('default')
   })
 

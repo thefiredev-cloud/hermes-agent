@@ -17,8 +17,6 @@ const PROVIDER_ORDER: Record<string, number> = {
   'claude-code': 6
 }
 
-const assetPath = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
-
 export const providerTitle = (p: OAuthProvider) => PROVIDER_DISPLAY_NAMES[p.id] ?? p.name
 const orderOf = (p: OAuthProvider) => PROVIDER_ORDER[p.id] ?? 99
 
@@ -45,7 +43,6 @@ export function FeaturedProviderRow({
       <span aria-hidden className="arc-border arc-reverse arc-nous" />
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <img alt="" className="size-5 shrink-0 rounded" src={assetPath('apple-touch-icon.png')} />
           <span className="text-[length:var(--conversation-text-font-size)] font-semibold">
             {freeTier ? t.freeTier.providerRowTitle : providerTitle(provider)}
           </span>

@@ -15,7 +15,9 @@ export const BUILTIN_PERSONALITIES = [
   'noir',
   'uwu',
   'philosopher',
-  'hype'
+  'hype',
+  // Kodros owner persona (local patch hermes-desktop-kodros-branding).
+  'kodros'
 ]
 
 // Spellings the runtime treats as "no personality" — mirrors

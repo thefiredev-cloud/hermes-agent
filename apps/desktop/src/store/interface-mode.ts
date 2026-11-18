@@ -70,6 +70,26 @@ export function toggleSimpleMode() {
   setInterfaceMode($interfaceMode.get() === 'simple' ? 'advanced' : 'simple')
 }
 
+const KODROS_DEFAULT_SEEDED_KEY = 'kodros.desktop.interfaceDefaultSeeded.v1'
+
+/**
+ * Kodros Desktop is chat-first: the first launch of a primary window rests in
+ * Simple (sidebar of chats, centered composer, minimal chrome). Seeded once,
+ * recorded under its own key, so a later pick of Advanced (which the codec
+ * stores as "no key") is never overridden. Called from the app entry only.
+ */
+export function seedKodrosInterfaceDefault(storage: Storage = window.localStorage) {
+  if (isSecondaryWindow() || isBrowserWindow() || isHudWindow() || storage.getItem(KODROS_DEFAULT_SEEDED_KEY)) {
+    return
+  }
+
+  storage.setItem(KODROS_DEFAULT_SEEDED_KEY, '1')
+
+  if (storage.getItem(INTERFACE_MODE_STORAGE_KEY) === null) {
+    setInterfaceMode('simple')
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Policy: every preference a mode may shadow, typed by what it holds.
 // ---------------------------------------------------------------------------

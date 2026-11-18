@@ -386,10 +386,10 @@ For an ordinary package of that desktop build, use the workspace's
 `dist:win`, `dist:mac`, `dist:linux`, or `pack` command. Those commands do not
 replace the complete tagged build described above.
 
-Icons are generated from `assets/nous-girl-*.svg` and `assets/backgrounds/`.
-`node scripts/generate-icons.mjs` renders them with the Hermes runtime Python
-(`HERMES_PYTHON`, else `python` on PATH); Pillow and resvg-py are core
-dependencies. Generated PNG/ICO/ICNS files are not source assets.
+Kodros icons are generated from `assets/kodros-mark.svg` by
+`scripts/generate-kodros-icons.sh` (rsvg-convert and ImageMagick 7). It writes
+the app icons (PNG/ICO/ICNS), the MSIX logos, the Icon Composer layers and the
+BrandMark tiles in `public/`.
 
 [Stable release admission](../../docs/stable-releases.md) requires the full
 pipeline, not just successful packaging. Native signed-package update tests

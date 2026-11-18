@@ -18,7 +18,7 @@ const cases = [
     b: 'catppuccin',
     junk: 'nope'
   },
-  { name: 'mode', pref: modePref as unknown as Pref, fallback: 'system', a: 'dark', b: 'light', junk: 'dusk' }
+  { name: 'mode', pref: modePref as unknown as Pref, fallback: 'dark', a: 'system', b: 'light', junk: 'dusk' }
 ]
 
 describe.each(cases)('per-profile $name', ({ pref, fallback, a, b, junk }) => {

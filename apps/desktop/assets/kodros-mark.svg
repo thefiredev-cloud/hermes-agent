@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Kodros mark: a K whose two arms meet at one node. Dark tile; the light
+       variant is kodros-mark-light.svg. Source for the app icons
+       (scripts/generate-kodros-icons.sh). -->
+  <defs>
+    <clipPath id="band">
+      <rect x="0" y="272" width="1024" height="480" />
+    </clipPath>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="#000000" />
+  <rect x="2" y="2" width="1020" height="1020" rx="230" fill="none" stroke="#262626" stroke-width="4" />
+  <g clip-path="url(#band)" stroke="#f5f5f5" stroke-width="96" fill="none">
+    <line x1="352" y1="200" x2="352" y2="824" />
+    <line x1="470" y1="512" x2="780" y2="168" />
+    <line x1="470" y1="512" x2="780" y2="856" />
+  </g>
+  <circle cx="470" cy="512" r="66" fill="#2e4fff" />
+</svg>

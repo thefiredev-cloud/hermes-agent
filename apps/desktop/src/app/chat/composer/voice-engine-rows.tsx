@@ -13,7 +13,8 @@ import { $voiceLiveStatus, selectedVoiceChatMode, setVoiceChatMode } from '@/sto
 
 /**
  * Which engine the next voice conversation mounts: the chained
- * speech-to-text → Hermes → speech loop, or GPT-Live delegating to Hermes.
+ * speech-to-text → agent → speech loop, or Kodros Live (the `gpt-live` mode,
+ * a full-duplex local voice server) delegating to the agent.
  *
  * Radio rows, not a toggle: the user is choosing between two named things and
  * the checked row tells them which one the next press starts. Rendered inside

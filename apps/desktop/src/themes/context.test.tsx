@@ -88,7 +88,7 @@ describe('ThemeProvider ← backend skin sync', () => {
     )
 
     // Boot: nothing resolves 'bloomberg' yet → default paint...
-    expect(cssVar('--theme-background-seed')).not.toBe('#000000')
+    expect(document.documentElement.dataset.hermesTheme).toBe('kodros')
 
     // ...but the pick survives, so the seed alone repaints it.
     act(() => ingestBackendSkin(bloomberg('#ff9f0a'), { apply: false }))

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useI18n } from '@/i18n'
 import { capitalize, normalize } from '@/lib/text'
 
+import kodrosIntroCopyJsonl from './intro-copy-kodros.jsonl?raw'
 import introCopyJsonl from './intro-copy.jsonl?raw'
 import { Wordmark } from './wordmark'
 
@@ -32,7 +33,7 @@ const FALLBACK_COPY: IntroCopy[] = [
     body: "Bring the code, question, or stuck part. I'll read the room before making changes."
   },
   {
-    headline: 'What should Hermes look at?',
+    headline: 'What should Jev look at?',
     body: "Send the task, failing path, or half-formed plan. I'll help turn it into action."
   },
   {
@@ -105,7 +106,10 @@ function parseIntroCopy(raw: string): Record<string, IntroCopy[]> {
   return byPersonality
 }
 
-const INTRO_COPY_BY_PERSONALITY = parseIntroCopy(introCopyJsonl)
+// The `kodros` set (display.personality: kodros) is owner-local copy kept in its own
+// file so the upstream stock file stays untouched. English only: other locales show
+// their localized custom-personality line, the same as any user-defined personality.
+const INTRO_COPY_BY_PERSONALITY = parseIntroCopy(`${introCopyJsonl}\n${kodrosIntroCopyJsonl}`)
 
 function neutralCopy(): IntroCopy[] {
   return INTRO_COPY_BY_PERSONALITY.none || INTRO_COPY_BY_PERSONALITY.default || FALLBACK_COPY
@@ -124,7 +128,7 @@ function fallbackCopyForPersonality(personalityKey: string): IntroCopy[] {
       body: "Send the task, file, or rough idea. I'll use your configured voice and keep the work grounded in this repo."
     },
     {
-      headline: `What does ${label} Hermes need to see?`,
+      headline: `What does ${label} Jev need to see?`,
       body: "Bring the context or the stuck part. I'll adapt to your configured personality."
     },
     {
@@ -132,7 +136,7 @@ function fallbackCopyForPersonality(personalityKey: string): IntroCopy[] {
       body: "Send the problem, file, or idea. I'll follow the personality you've configured."
     },
     {
-      headline: `What should ${label} Hermes tackle?`,
+      headline: `What should ${label} Jev tackle?`,
       body: "Drop the task here. I'll keep the work grounded in the repo."
     },
     {
@@ -146,7 +150,7 @@ function pickCopy(copies: IntroCopy[], seed = 0): IntroCopy {
   return copies[Math.abs(seed) % copies.length] || FALLBACK_COPY[0]
 }
 
-const WORDMARK = 'HERMES AGENT'
+const WORDMARK = 'KODROS'
 
 function resolveCopy(personality?: string, seed?: number): IntroCopy {
   const personalityKey = normalizeKey(personality)
@@ -176,7 +180,7 @@ export function Intro({ personality, seed }: IntroProps) {
       data-slot="aui_intro"
     >
       <div className="w-full min-w-0">
-        <Wordmark className="mb-1" text={WORDMARK} />
+        <Wordmark className="mb-3" text={WORDMARK} width="min(19rem, 72%)" />
 
         <p className="m-0 text-center leading-normal tracking-tight">{body}</p>
       </div>

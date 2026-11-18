@@ -62,15 +62,14 @@ const normalizeSkin = (name: string | null): string =>
   name && resolveTheme(name) && !RETIRED_SKINS.has(name) ? name : DEFAULT_SKIN_NAME
 
 /**
- * A stored mode, or `system` when there isn't one.
+ * A stored mode, or `dark` when there isn't one.
  *
- * A fresh profile follows the OS. Defaulting to `light` meant someone whose
- * desktop is dark got a white window on first launch and had to go find the
- * setting — and with per-appearance translucency it also handed them light's
- * much heavier tint, tuned for a bright desktop they don't have.
+ * Kodros Desktop opens on its true-black skin. A fresh profile starts dark
+ * regardless of the OS appearance; Light and System stay one click away in
+ * Settings → Appearance, and an explicit pick is always honoured.
  */
 const normalizeMode = (value: string | null): ThemeMode =>
-  value === 'light' || value === 'dark' || value === 'system' ? value : 'system'
+  value === 'light' || value === 'dark' || value === 'system' ? value : 'dark'
 
 // ─── Per-profile appearance persistence ─────────────────────────────────────
 // Skin and mode are each stored per profile. "default" isn't a real profile —

@@ -30,7 +30,7 @@ export interface GitOwnerRoute {
 
 const windowApi: GitApi = <T>(path: string, body?: Record<string, unknown>) => {
   if (!window.hermesDesktop) {
-    throw new Error('Hermes Desktop bridge is unavailable')
+    throw new Error('Kodros Desktop bridge is unavailable')
   }
 
   return hermesApi<T>(

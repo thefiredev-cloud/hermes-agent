@@ -86,14 +86,14 @@ test('baked runtime identity never evaluates ambient build selectors', async ():
   }
 })
 
-test('nonstable runtime pins userData before the app name can change', async (): Promise<void> => {
-  const stable: ProductIdentity = await identityForVariant('bundled')
+test('stable runtime pins its historical userData before applying the new display name', async (): Promise<void> => {
+  const stable: ProductIdentity = await identityForVariant(undefined)
   process.env.HERMES_PAYLOAD_TAG = 'v0.28.0+canary.20260818T000000Z'
   const canary: ProductIdentity = await identityForVariant('bundled')
   const runtime: { applyDesktopIdentity: typeof applyDesktopIdentity } = await import('./product-identity')
   const root: string = fs.mkdtempSync(path.join(os.tmpdir(), 'identity-userdata-'))
-  const paths: Record<string, string> = { appData: root, userData: path.join(root, 'Hermes') }
-  let name: string = 'Hermes'
+  const paths: Record<string, string> = { appData: root, userData: path.join(root, stable.displayName) }
+  let name: string = stable.displayName
 
   const app: Parameters<typeof applyDesktopIdentity>[0] = {
     getPath: (key: string): string => paths[key],
@@ -107,8 +107,9 @@ test('nonstable runtime pins userData before the app name can change', async ():
   }
 
   try {
-    assert.equal(runtime.applyDesktopIdentity(app, stable), null)
-    assert.equal(paths.userData, path.join(root, 'Hermes'))
+    assert.equal(runtime.applyDesktopIdentity(app, stable), stable.displayName)
+    assert.equal(paths.userData, path.join(root, stable.appNamePascal))
+    assert.equal(name, stable.displayName)
     assert.equal(runtime.applyDesktopIdentity(app, canary), canary.displayName)
     assert.equal(paths.userData, path.join(paths.appData, canary.appNamePascal))
     assert.equal(name, canary.displayName)
@@ -119,19 +120,19 @@ test('nonstable runtime pins userData before the app name can change', async ():
 
 test.each([
   [undefined, 'Hermes', 'hermes', 'latest', 'canary'],
-  ['bundled', 'Hermes Agent', 'hermes', 'latest', 'canary'],
-  ['light', 'Hermes Light', 'hermes-light', 'light', 'light-canary']
+  ['bundled', 'HermesBundled', 'hermes', 'latest', 'canary'],
+  ['light', 'HermesLight', 'hermes-light', 'light', 'light-canary']
 ] as const)(
-  '%s separates stable, canary and independent commits',
+  '%s preserves its per-variant data directory across release channels',
   async (
     variant: string | undefined,
-    display: string,
+    userDataName: string,
     cli: string,
     channel: string,
     canaryChannel: string
   ): Promise<void> => {
     const stable: ProductIdentity = await identityForVariant(variant)
-    assert.equal(stable.displayName, display)
+    assert.equal(stable.appNamePascal, userDataName)
     assert.equal(stable.channel, channel)
     assert.equal(stable.light, variant === 'light')
     assert.equal(stable.storeMsix, undefined)
@@ -152,7 +153,7 @@ test.each([
       assert.deepEqual(current, await identityForVariant(variant))
 
       if (commit) {
-        assert.equal(current.displayName, `${display} ${commit.slice(0, 7)}`)
+        assert.ok(current.displayName.endsWith(commit.slice(0, 7)))
       }
 
       for (const previous of identities) {
@@ -197,6 +198,22 @@ test('light and bundled retain distinct OS markers from the full client', async 
     }
   }
 })
+
+test.each([
+  [undefined, 'Kodros', 'com.nousresearch.hermes', 'Hermes'],
+  ['bundled', 'Kodros Agent', 'com.nousresearch.hermes-bundled', 'HermesBundled'],
+  ['light', 'Kodros Light', 'com.nousresearch.hermes-light', 'HermesLight']
+] as const)(
+  '%s shows Kodros branding while keeping its Hermes system identifiers',
+  async (variant: string | undefined, display: string, appId: string, pascal: string): Promise<void> => {
+    const identity: ProductIdentity = await identityForVariant(variant)
+    assert.equal(identity.displayName, display)
+    // appId, userData directory, executable and protocol stay put so installs keep their state.
+    assert.equal(identity.appId, appId)
+    assert.equal(identity.appNamePascal, pascal)
+    assert.equal(identity.artifactNamePascal, pascal)
+  }
+)
 
 test('packaging isolates boot metadata and executable names without renaming release artifacts', async (): Promise<void> => {
   const pkg: { name: string; productName: string; version: string; description: string } = require('../package.json')

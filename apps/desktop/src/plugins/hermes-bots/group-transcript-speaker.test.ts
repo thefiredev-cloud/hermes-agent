@@ -26,9 +26,9 @@ const label = (entry: typeof remoteLine | typeof localLine, members: RosterRow[]
   displayName(groupTranscriptSpeaker(entry, members, roster)!, groupTranscriptSpeakerMeta(entry, members, allMeta, roster))
 
 describe('group transcript speaker', () => {
-  it('names a seated remote default by its machine, the local one as Hermes', () => {
+  it('names a seated remote default by its machine, the local one as Kodros', () => {
     expect(label(remoteLine, [localDefault, homelabDefault])).toBe('Homelab')
-    expect(label(localLine, [localDefault, homelabDefault])).toBe('Hermes')
+    expect(label(localLine, [localDefault, homelabDefault])).toBe('Kodros')
   })
 
   it('keeps a removed remote member owner-qualified instead of reading as this device', () => {

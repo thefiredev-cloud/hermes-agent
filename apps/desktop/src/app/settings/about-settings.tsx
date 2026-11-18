@@ -4,7 +4,7 @@ import { type ReactElement, useEffect } from 'react'
 import { UpdateStatusCard, VersionHero } from '@/components/update-status'
 import { VersionDetails } from '@/components/version-details'
 import { useI18n } from '@/i18n'
-import { RefreshCw } from '@/lib/icons'
+import { FileText, RefreshCw } from '@/lib/icons'
 import { $cloudOwnsUpdates } from '@/store/cloud-updates'
 import { $connection } from '@/store/session'
 import { $desktopVersion, checkBackendUpdates, refreshDesktopVersion } from '@/store/updates'
@@ -13,6 +13,7 @@ import { SectionHeading, SettingsContent } from './primitives'
 import { SETTING_IDS, settingElementId } from './settings-manifest'
 import { UninstallSection } from './uninstall-section'
 import { UpdateChannelRow } from './update-channel-row'
+import { UPSTREAM_CREDIT, UPSTREAM_LICENSE } from './upstream-credits'
 import { useSettingDeepLink } from './use-setting-deep-link'
 
 interface AboutSettingsProps {
@@ -71,6 +72,16 @@ function AppUpdatesSettings({ includeUninstall }: AppUpdatesSettingsProps): Reac
           </>
         )}
         {version && <VersionDetails version={version} />}
+        <SectionHeading icon={FileText} title={t.settings.about.credits} />
+        <div className="grid gap-2 text-sm text-(--ui-text-secondary)" data-slot="about-credits">
+          <p className="m-0">{UPSTREAM_CREDIT}</p>
+          <details>
+            <summary className="cursor-pointer text-(--ui-text-tertiary)">{t.settings.about.licenseToggle}</summary>
+            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-md border border-(--ui-stroke-tertiary) p-3 font-mono text-xs text-(--ui-text-tertiary)">
+              {UPSTREAM_LICENSE}
+            </pre>
+          </details>
+        </div>
         {includeUninstall && <UninstallSection />}
       </div>
     </SettingsContent>

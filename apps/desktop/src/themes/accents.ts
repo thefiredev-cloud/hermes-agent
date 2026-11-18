@@ -21,7 +21,7 @@ const SWATCHES: readonly Swatch[] = [
   { id: 'mono', name: 'Mono', light: '#000000', dark: '#ffffff' },
   { id: 'green', name: 'GitHub green', light: '#2ea043', dark: '#2ea043' },
   { id: 'cyan', name: 'Cyber cyan', light: '#00d5ff', dark: '#00d5ff' },
-  { id: 'nous', name: 'Nous blue', light: NOUS_ACCENT, dark: NOUS_ACCENT },
+  { id: 'nous', name: 'Cobalt blue', light: NOUS_ACCENT, dark: NOUS_ACCENT },
   { id: 'violet', name: 'Ultraviolet', light: '#8a2be2', dark: '#8a2be2' },
   { id: 'pink', name: 'Barbie pink', light: '#e0218a', dark: '#e0218a' },
   { id: 'red', name: 'Electric red', light: '#ff073a', dark: '#ff073a' },

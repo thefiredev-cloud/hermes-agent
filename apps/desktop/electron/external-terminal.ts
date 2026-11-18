@@ -51,7 +51,7 @@ export function windowsQuote(value: string): string {
  *
  * PATH is deliberately dropped: the script runs inside a login shell that
  * already has the user's own PATH, and the desktop's PATH (assembled for a
- * headless child) is the wrong answer for an interactive terminal. The Hermes
+ * headless child) is the wrong answer for an interactive terminal. The Kodros
  * command is invoked by absolute path, so nothing here depends on PATH.
  */
 export function terminalScriptEnv(
