@@ -57,6 +57,40 @@ describe('interface mode persistence', () => {
     expect(relaunched.$interfaceMode.get()).toBe('advanced')
   })
 
+  it.each(['access', 'read', 'write'])('does not abort startup when localStorage fails on %s', async failure => {
+    const store = await loadStore()
+    const storage: Storage = {
+      length: 0,
+      clear: vi.fn(),
+      key: vi.fn(() => null),
+      removeItem: vi.fn(),
+      getItem: vi.fn(() => {
+        if (failure === 'read') {
+          throw new DOMException('Storage blocked', 'SecurityError')
+        }
+
+        return null
+      }),
+      setItem: vi.fn(() => {
+        throw new DOMException('Storage full', 'QuotaExceededError')
+      })
+    }
+    const access = vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+      if (failure === 'access') {
+        throw new DOMException('Storage blocked', 'SecurityError')
+      }
+
+      return storage
+    })
+
+    try {
+      expect(() => store.seedKodrosInterfaceDefault()).not.toThrow()
+      expect(store.$interfaceMode.get()).toBe('advanced')
+    } finally {
+      access.mockRestore()
+    }
+  })
+
   it('leaves an install that already picked a mode alone when the seed first runs', async () => {
     window.localStorage.setItem(MODE_KEY, 'simple')
     const store = await loadStore()

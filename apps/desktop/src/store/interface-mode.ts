@@ -78,14 +78,28 @@ const KODROS_DEFAULT_SEEDED_KEY = 'kodros.desktop.interfaceDefaultSeeded.v1'
  * recorded under its own key, so a later pick of Advanced (which the codec
  * stores as "no key") is never overridden. Called from the app entry only.
  */
-export function seedKodrosInterfaceDefault(storage: Storage = window.localStorage) {
-  if (isSecondaryWindow() || isBrowserWindow() || isHudWindow() || storage.getItem(KODROS_DEFAULT_SEEDED_KEY)) {
+export function seedKodrosInterfaceDefault(storage?: Storage) {
+  if (isSecondaryWindow() || isBrowserWindow() || isHudWindow()) {
     return
   }
 
-  storage.setItem(KODROS_DEFAULT_SEEDED_KEY, '1')
+  let shouldSeed: boolean
 
-  if (storage.getItem(INTERFACE_MODE_STORAGE_KEY) === null) {
+  try {
+    storage ??= window.localStorage
+
+    if (storage.getItem(KODROS_DEFAULT_SEEDED_KEY)) {
+      return
+    }
+
+    shouldSeed = storage.getItem(INTERFACE_MODE_STORAGE_KEY) === null
+    storage.setItem(KODROS_DEFAULT_SEEDED_KEY, '1')
+  } catch {
+    // Optional first-run defaults must not block startup when storage is unavailable.
+    return
+  }
+
+  if (shouldSeed) {
     setInterfaceMode('simple')
   }
 }
