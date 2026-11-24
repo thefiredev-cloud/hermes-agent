@@ -11,6 +11,7 @@ import {
   decodeChannelManifest,
   decodeChannelRecord,
   type ReceiverKind,
+  releaseTagVersion,
   type RetiredChannel,
   sameChannelIdentity,
   validateChannelName
@@ -237,7 +238,7 @@ export class ChannelResolver {
     const prefixes = [buildPrefix(request.buildId)]
 
     if (channel.policy !== 'preview') {
-      if (!request.releaseTag || request.version !== request.releaseTag.slice(1)) {
+      if (!request.releaseTag || request.version !== releaseTagVersion(request.releaseTag)) {
         throw new Error('Protected release version mismatch')
       }
 

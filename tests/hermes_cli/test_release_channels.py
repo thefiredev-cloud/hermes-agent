@@ -204,6 +204,28 @@ def test_legacy_bootstrap_uses_real_archive_keys_and_source_main_has_no_bundle()
                 pub.allocate(name, "a" * 40, "2.0.0")
 
 
+def test_canary_request_reads_upstream_prefix_tag_and_legacy_suffix_tag():
+    from hermes_cli.release_channels import ChannelError, validate_request
+    with object_server() as (url, objects, headers, requests, faults):
+        pub = publisher(url, verify_build=lambda request, manifest: True)
+        pub.create("temporary")
+        request = pub.allocate("temporary", "a" * 40, "0.23.3")
+        manifest, _ = seed_manifest(pub, request, objects)
+    base = dict(manifest["request"], channel="canary", buildId="b" * 32, archiveRef=None)
+    upstream = dict(base, releaseTag="canary.20261123T065600Z-v0.23.3",
+                    version="0.23.3+canary.20261123T065600Z", windowsVersion="26.1123.6.5600")
+    assert validate_request(upstream, policy="canary-release") == upstream
+    legacy = dict(base, releaseTag="v0.23.3+canary.20261123T065600Z",
+                  version="0.23.3+canary.20261123T065600Z", windowsVersion="26.1123.6.5600")
+    assert validate_request(legacy, policy="canary-release") == legacy
+    for version in ("0.23.3", "canary.20261123T065600Z-v0.23.3", "0.23.3+canary.20261123T065601Z"):
+        with pytest.raises(ChannelError, match="version mismatch"):
+            validate_request(dict(upstream, version=version), policy="canary-release")
+    with pytest.raises(ChannelError, match="release tag"):
+        validate_request(dict(upstream, releaseTag="canary.20261123T065600Z-v0.23.3+canary.20261123T065600Z"),
+                         policy="canary-release")
+
+
 @pytest.mark.parametrize("sequence", [1, 65535, 65536, 2**32 - 1])
 def test_sequence_versions_remain_monotonic_at_native_rollover(sequence):
     from hermes_cli.release_channels import package_versions
