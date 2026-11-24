@@ -96,6 +96,28 @@ def canary_tag_for_date(version: str, date_utc: str) -> str:
     return f"v{core}+canary.{date_utc}"
 
 
+# Upstream (NousResearch) now publishes canaries as ``canary.<stamp>-v<stable>``, and this fork
+# reads upstream's shared R2 channel store. That tag's payload version is ``<stable>+canary.<stamp>``.
+# Read-only: this fork still produces its own ``v<stable>+canary.<stamp>`` tags.
+_UPSTREAM_CANARY_TAG_RE = re.compile(
+    r"^canary\.(?P<stamp>20\d{6}T\d{6}Z)-v"
+    r"(?P<core>(?:0|[1-9]\d{0,2})\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$"
+)
+
+
+def published_release_version(tag: Any) -> str | None:
+    """Payload version a published release tag names.
+
+    ``canary.<stamp>-vX.Y.Z`` (upstream canary) gives ``X.Y.Z+canary.<stamp>``;
+    a ``v``-prefixed tag (stable or this fork's canary) gives the tag without the ``v``.
+    """
+    if not isinstance(tag, str):
+        return None
+    match = _UPSTREAM_CANARY_TAG_RE.fullmatch(tag)
+    if match:
+        return f"{match['core']}+canary.{match['stamp']}"
+    return tag[1:] if tag.startswith("v") else None
+
 
 def install_id(project_root: Optional[Path] = None) -> str:
     """The sha16 id of the install at ``project_root`` (default: this one).

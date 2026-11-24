@@ -239,6 +239,18 @@ export function buildPrefix(buildId: string): string {
   return `releases/channel-builds/${buildId}/`
 }
 
+/** Payload version a protected releaseTag names: upstream `canary.<stamp>-vX.Y.Z` gives
+ * `X.Y.Z+canary.<stamp>`; a `v`-prefixed tag (stable or this fork's canary) drops the `v`. */
+export function releaseTagVersion(releaseTag: string): string | null {
+  const canary = /^canary\.(20\d{6}T\d{6}Z)-v(\d+\.\d+\.\d+)$/.exec(releaseTag)
+
+  if (canary) {
+    return `${canary[2]}+canary.${canary[1]}`
+  }
+
+  return releaseTag.startsWith('v') ? releaseTag.slice(1) : null
+}
+
 function identity(fields: Fields): ChannelIdentity {
   return {
     token: fields.text('token', /^[a-f0-9]{16}$/),
@@ -394,9 +406,13 @@ function request(fields: Fields): ChannelRequest {
     throw new Error('Noncanonical request publicBase')
   }
 
-  const releaseTag = fields.optional('releaseTag', /^v\d+\.\d+\.\d+(?:\+canary\.20\d{6}T\d{6}Z)?$/)
+  // Upstream's canary.<stamp>-vX.Y.Z shape or v<stable>[+canary.<stamp>]; never both.
+  const releaseTag = fields.optional(
+    'releaseTag',
+    /^(?:canary\.20\d{6}T\d{6}Z-v\d+\.\d+\.\d+|v\d+\.\d+\.\d+(?:\+canary\.20\d{6}T\d{6}Z)?)$/
+  )
 
-  const canaryRelease: boolean = /\+canary\./.test(releaseTag || '')
+  const canaryRelease: boolean = /^canary\.|\+canary\./.test(releaseTag || '')
 
   const windowsVersion = fields.text('windowsVersion', canaryRelease ? /^\d+\.\d+\.\d+\.\d+$/ : /^\d+\.\d+\.\d+\.0$/)
 

@@ -257,6 +257,47 @@ test('protected canary accepts bounded Windows revisions without relaxing stable
   expect((await resolver.resolve()).kind).toBe('active')
 })
 
+test('protected canary reads the upstream canary.<stamp>-vX.Y.Z tag shape', async (): Promise<void> => {
+  const f = await fixture()
+  f.record.policy = 'canary-release'
+  f.manifest.packages = [
+    {
+      platform: 'win32',
+      arch: 'x64',
+      variant: 'bundled',
+      version: '26.1123.6.5600',
+      identity: f.build.identity.msixAppIdWithOrg,
+      publisher: 'CN=Nous Research',
+      artifact: {
+        key: `releases/channel-builds/${f.manifest.request.buildId}/win32/Hermes.msixbundle`,
+        sha256: 'd'.repeat(64),
+        size: 100
+      },
+      feed: {
+        key: `releases/channel-builds/${f.manifest.request.buildId}/win32/stable.appinstaller`,
+        channel: 'stable'
+      }
+    }
+  ]
+  f.manifest.request.releaseTag = 'canary.20261123T065600Z-v0.23.3'
+  f.manifest.request.version = '0.23.3+canary.20261123T065600Z'
+  f.manifest.request.windowsVersion = '26.1123.6.5600'
+  f.publish()
+  const resolver = new ChannelResolver({ build: f.build, platform: 'win32', arch: 'x64', signer: 'CN=Nous Research' })
+  expect((await resolver.resolve()).kind).toBe('active')
+
+  for (const version of ['0.23.3', 'canary.20261123T065600Z-v0.23.3', '0.23.3+canary.20261123T065601Z']) {
+    f.manifest.request.version = version
+    f.publish()
+    await expect(resolver.resolve()).rejects.toThrow(/version/)
+  }
+
+  f.manifest.request.version = '0.23.3+canary.20261123T065600Z'
+  f.manifest.request.releaseTag = 'canary.20261123T065600Z-v0.23.3+canary.20261123T065600Z'
+  f.publish()
+  await expect(resolver.resolve()).rejects.toThrow(/releaseTag/)
+})
+
 test.each(['rc.1-v0.21.5', 'rc.12-v1.0.0'] as const)(
   'admits attempt archive ref %j as the protected prefix',
   async (attempt): Promise<void> => {
